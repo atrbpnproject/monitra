@@ -15,6 +15,7 @@
     </div>
     <div class="top-actions">
       <select id="pilih-rekap" aria-label="Pilih rekap" hidden></select>
+      <button id="rekap-sekarang" class="btn" data-act="rekap-sekarang" title="Jalankan ekstensi Rekap Tunggakan Kanwil">Rekap Sekarang</button>
       <label class="btn primary">
         Impor Excel
         <input id="file" type="file" accept=".xlsx,.json" multiple hidden>
@@ -31,7 +32,28 @@
     <button data-tab="riwayat">Riwayat &amp; Perbandingan</button>
   </nav>
 
+  <div id="status-rekap" class="status-rekap" hidden>
+    <div class="status-isi"><span id="status-teks"></span><button class="btn-x" data-act="tutup-status" aria-label="Tutup">×</button></div>
+    <div class="status-bar"><div id="status-progres"></div></div>
+  </div>
+
   <main id="main"></main>
+
+  <dialog id="dlg-ekstensi">
+    <h2>Ekstensi belum terdeteksi</h2>
+    <p class="muted">Tombol Rekap Sekarang menjalankan ekstensi Chrome <b>Rekap Tunggakan Kanwil</b> versi 1.2.0 atau lebih baru. Ekstensi ini belum terpasang, sedang nonaktif, atau versinya masih lama.</p>
+    <p><a class="btn primary" href="unduh/rekap-tunggakan-kanwil.zip" download>Unduh ekstensi (ZIP)</a></p>
+    <h3>Cara memasang</h3>
+    <ol>
+      <li>Ekstrak ZIP ke folder tetap, misalnya <code>Documents\rekap-tunggakan-kanwil</code>. Jangan hapus folder ini setelah dipasang.</li>
+      <li>Buka alamat <code>chrome://extensions</code> di tab baru <button class="btn small-btn" data-act="salin-ext">Salin alamat</button></li>
+      <li>Aktifkan <b>Developer mode</b> di pojok kanan atas.</li>
+      <li>Klik <b>Load unpacked</b>, lalu pilih folder hasil ekstrak.</li>
+      <li>Kembali ke halaman ini dan muat ulang (F5).</li>
+    </ol>
+    <p class="muted small">Sudah terpasang versi lama? Ganti isi foldernya dengan isi ZIP baru, lalu klik ikon muat ulang pada kartu ekstensi di <code>chrome://extensions</code>. Kalau ekstensi sedang nonaktif, nyalakan tombolnya di kartu ekstensi.</p>
+    <form method="dialog"><button class="btn">Tutup</button></form>
+  </dialog>
 
   <div id="drop" class="drop-overlay" hidden><div>Lepaskan file Excel di sini</div></div>
   <div id="tip" class="tip" hidden></div>

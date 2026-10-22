@@ -84,6 +84,7 @@
     sort: { key: 'telat', dir: -1 },
     page: 0,
     lsort: { key: 'berkas', dir: -1 },
+    ext: null, // { versi } bila ekstensi Rekap Tunggakan Kanwil terdeteksi
   };
 
   function turunkan(r) {
@@ -153,6 +154,7 @@
   function render() {
     const R = S.R;
     $('#tabs').hidden = !R;
+    tandaiEkstensi();
     $('#pilih-rekap').hidden = !S.list.length;
     $('#pilih-rekap').innerHTML = S.list.map((r) => `<option value="${esc(r.id)}" ${R && r.id === R.id ? 'selected' : ''}>${esc(pendekKanwil(r.kanwil))} · ${waktuLabel(r.waktu)}</option>`).join('');
     $('#meta').textContent = R ? `${R.kanwil} · ${R.filter || 'filter tidak diketahui'} · diambil ${waktuLabel(R.waktu)} · sumber ${R.sumber}` : 'Data dibaca dan disimpan di browser ini saja';
@@ -166,7 +168,8 @@
   function kosong() {
     return `<div class="empty">
       <h2>Belum ada rekap</h2>
-      <p class="lead">Impor file Excel hasil tombol <b>Unduh Excel</b> pada ekstensi Rekap Tunggakan Kanwil.</p>
+      <p class="lead">Klik <b>Rekap Sekarang</b> untuk menjalankan ekstensi Rekap Tunggakan Kanwil, atau impor file Excel hasil tombol <b>Unduh Excel</b> pada ekstensi.</p>
+      <p><button class="btn primary" data-act="rekap-sekarang">Rekap Sekarang</button></p>
       <label class="dropzone" style="display:block">
         <input type="file" accept=".xlsx,.json" multiple hidden data-file>
         <div style="font-size:16px;font-weight:600">Klik untuk memilih file, atau seret file ke halaman ini</div>
@@ -176,7 +179,7 @@
         <li>Data hanya dibaca oleh browser Anda. Tidak ada yang diunggah ke server.</li>
         <li>Setiap rekap tersimpan di browser ini, sehingga rekap dari tanggal berbeda bisa dibandingkan.</li>
         <li>Membuka halaman ini di browser atau komputer lain berarti data harus diimpor ulang.</li>
-        <li>Dengan ekstensi versi 1.1 ke atas, klik <b>Kirim ke Monitra</b> di panel ekstensi setelah rekap selesai. Halaman ini akan terbuka dan langsung menampilkan hasilnya.</li>
+        <li>Rekap Sekarang membuka dashboard Kinerja Kantor Pertanahan di tab baru (login dulu bila diminta), menjalankan rekap, lalu kembali ke sini dengan hasilnya.</li>
       </ol>
     </div>`;
   }
@@ -616,6 +619,12 @@
     }
     const act = el.dataset.act;
     const R = S.R;
+    if (act === 'rekap-sekarang') return rekapSekarang();
+    if (act === 'tutup-status') { $('#status-rekap').hidden = true; return; }
+    if (act === 'salin-ext') {
+      try { await navigator.clipboard.writeText('chrome://extensions'); toast('Alamat disalin. Tempel di kolom alamat tab baru.'); } catch (err) { toast('Ketik chrome://extensions di kolom alamat tab baru.'); }
+      return;
+    }
     if (act === 'cetak') window.print();
     if (act === 'reset') { S.f = { q: '', kantah: '', prosedur: '', posisi: '', tahun: '', umur: '' }; S.page = 0; render(); }
     if (act === 'unduh-berkas') unduhXlsx(`Berkas_Tunggakan_${pendekKanwil(R.kanwil)}_${R.ref}`, [{ name: 'Berkas', rows: barisBerkas(saringBerkas(R).sort((a, b) => (b.telat ?? 0) - (a.telat ?? 0))) }]);
@@ -667,9 +676,32 @@
     if (files.length) impor(files); else toast('Hanya file .xlsx atau .json yang bisa diimpor.');
   });
 
+  // ---------- ekstensi ----------
+  function tandaiEkstensi() {
+    const b = $('#rekap-sekarang');
+    b.classList.toggle('terhubung', !!S.ext);
+    b.title = S.ext ? `Ekstensi Rekap Tunggakan Kanwil ${S.ext.versi} terhubung` : 'Ekstensi belum terdeteksi: klik untuk mengunduh dan memasang';
+  }
+  function rekapSekarang() {
+    if (!S.ext) { $('#dlg-ekstensi').showModal(); return; }
+    window.postMessage({ type: 'REKAP_MINTA', kanwil: S.R ? S.R.kanwil : '' }, '*');
+    statusRekap('mulai', 'Meminta ekstensi memulai rekap…', 0);
+  }
+  function statusRekap(tahap, pesan, pct) {
+    const box = $('#status-rekap');
+    box.hidden = false;
+    box.classList.toggle('gagal', tahap === 'gagal');
+    $('#status-teks').textContent = (tahap === 'gagal' ? '' : 'Ekstensi: ') + pesan;
+    if (pct !== undefined && pct !== null) $('#status-progres').style.width = Math.max(0, Math.min(100, pct)) + '%';
+    clearTimeout(statusRekap.t);
+    if (tahap === 'selesai') statusRekap.t = setTimeout(() => (box.hidden = true), 6000);
+  }
+
   // Jalur untuk ekstensi: skrip ekstensi di halaman ini mengirim hasil rekap lewat window.postMessage.
   window.addEventListener('message', async (e) => {
     if (e.source !== window || !e.data) return;
+    if (e.data.type === 'REKAP_EKSTENSI_ADA') { S.ext = { versi: e.data.versi }; tandaiEkstensi(); return; }
+    if (e.data.type === 'REKAP_STATUS') { statusRekap(e.data.tahap, e.data.pesan, e.data.pct); return; }
     if (e.data.type === 'REKAP_TUNGGAKAN_KOSONG') {
       toast('Data dari ekstensi tidak ditemukan atau sudah diterima sebelumnya. Klik Kirim ke Monitra lagi di panel ekstensi.', 6000);
       history.replaceState(null, '', location.pathname + location.search);
@@ -680,7 +712,7 @@
       await siap;
       S.tab = 'ringkasan';
       await simpanRekap(D.dariEkstensi(e.data.hasil));
-      toast('Rekap dari ekstensi berhasil ditampilkan.');
+      statusRekap('selesai', `Rekap selesai: ${fmt(S.R.berkas.length)} berkas tunggakan ditampilkan.`, 100);
       window.postMessage({ type: 'REKAP_TUNGGAKAN_DITERIMA', id: e.data.id }, '*');
     } catch (err) {
       toast('Gagal menerima rekap dari ekstensi: ' + err.message, 6000);
@@ -688,4 +720,5 @@
   });
 
   const siap = muat().then(render);
+  window.postMessage({ type: 'REKAP_EKSTENSI_PING' }, '*');
 })();

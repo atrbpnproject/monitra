@@ -28,6 +28,9 @@ Cara memakai
 5. Klik "Unduh Excel", atau klik "Kirim ke Monitra" untuk langsung membuka
    hasilnya di web https://atrbpnproject.github.io/monitra/
 
+Bisa juga dimulai dari web Monitra: klik "Rekap Sekarang". Ekstensi membuka
+dashboard, merekap, lalu menampilkan hasilnya kembali di tab Monitra.
+
 Isi file Excel
 --------------
 - Ringkasan Kantah   : tabel seperti rekap Kanwil + jumlah layanan bertunggakan
