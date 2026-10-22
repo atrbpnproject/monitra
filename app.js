@@ -682,8 +682,35 @@
     b.classList.toggle('terhubung', !!S.ext);
     b.title = S.ext ? `Ekstensi Rekap Tunggakan Kanwil ${S.ext.versi} terhubung` : 'Ekstensi belum terdeteksi: klik untuk mengunduh dan memasang';
   }
-  function rekapSekarang() {
-    if (!S.ext) { $('#dlg-ekstensi').showModal(); return; }
+  // Tanya ekstensi apakah terpasang; jawabannya REKAP_EKSTENSI_ADA dari monitra-bridge.js.
+  let jawabEkstensi = null;
+  function cekEkstensi(ms = 1200) {
+    return new Promise((res) => {
+      const t = setTimeout(() => { jawabEkstensi = null; res(null); }, ms);
+      jawabEkstensi = (v) => { clearTimeout(t); jawabEkstensi = null; res(v); };
+      window.postMessage({ type: 'REKAP_EKSTENSI_PING' }, '*');
+    });
+  }
+  function unduhEkstensi() {
+    const a = document.createElement('a');
+    a.href = 'unduh/rekap-tunggakan-kanwil.zip';
+    a.download = 'rekap-tunggakan-kanwil.zip';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  async function rekapSekarang() {
+    const tombol = document.querySelectorAll('[data-act="rekap-sekarang"]');
+    tombol.forEach((b) => { b.disabled = true; b.dataset.label = b.textContent; b.textContent = 'Memeriksa ekstensi…'; });
+    const versi = await cekEkstensi();
+    tombol.forEach((b) => { b.disabled = false; b.textContent = b.dataset.label; });
+    S.ext = versi ? { versi } : null;
+    tandaiEkstensi();
+    if (!S.ext) {
+      unduhEkstensi();
+      $('#dlg-ekstensi').showModal();
+      return;
+    }
     window.postMessage({ type: 'REKAP_MINTA', kanwil: S.R ? S.R.kanwil : '' }, '*');
     statusRekap('mulai', 'Meminta ekstensi memulai rekap…', 0);
   }
@@ -700,7 +727,12 @@
   // Jalur untuk ekstensi: skrip ekstensi di halaman ini mengirim hasil rekap lewat window.postMessage.
   window.addEventListener('message', async (e) => {
     if (e.source !== window || !e.data) return;
-    if (e.data.type === 'REKAP_EKSTENSI_ADA') { S.ext = { versi: e.data.versi }; tandaiEkstensi(); return; }
+    if (e.data.type === 'REKAP_EKSTENSI_ADA') {
+      S.ext = { versi: e.data.versi };
+      tandaiEkstensi();
+      if (jawabEkstensi) jawabEkstensi(e.data.versi);
+      return;
+    }
     if (e.data.type === 'REKAP_STATUS') { statusRekap(e.data.tahap, e.data.pesan, e.data.pct); return; }
     if (e.data.type === 'REKAP_TUNGGAKAN_KOSONG') {
       toast('Data dari ekstensi tidak ditemukan atau sudah diterima sebelumnya. Klik Kirim ke Monitra lagi di panel ekstensi.', 6000);
