@@ -25,11 +25,21 @@ Cara memakai
 3. Pastikan Kanwil = "Kantor Wilayah Provinsi Nusa Tenggara Barat".
    Filter Tahun/Bulan mengikuti pilihan di halaman (default Semua Tahun / Semua Bulan).
 4. Klik "Mulai Rekap". Tunggu sampai status "Selesai".
-5. Klik "Unduh Excel", atau klik "Kirim ke Monitra" untuk langsung membuka
-   hasilnya di web https://atrbpnproject.github.io/monitra/
+5. Klik "Buka di Monitra" untuk langsung membuka hasilnya di web
+   https://atrbpnproject.github.io/monitra/ , atau klik "Unduh Excel".
+6. Bila ada kantah atau layanan yang gagal diambil, klik "Ulangi yang gagal".
+   Hanya bagian yang gagal yang diambil ulang.
 
 Bisa juga dimulai dari web Monitra: klik "Rekap Sekarang". Ekstensi membuka
 dashboard, merekap, lalu menampilkan hasilnya kembali di tab Monitra.
+
+Rekap otomatis terjadwal
+------------------------
+Buka bagian "Rekap otomatis terjadwal" di panel, centang, lalu pilih jam
+(default 07.30). Setiap hari kerja ekstensi membuka tab dashboard dan merekap
+kanwil yang sedang dipilih. Syaratnya Chrome terbuka dan sesi login ATR/BPN
+masih aktif. Hasilnya disimpan di ekstensi dan otomatis masuk ke Monitra saat
+halaman Monitra dibuka.
 
 Isi file Excel
 --------------
@@ -44,7 +54,7 @@ Isi file Excel
 Catatan
 -------
 - Ekstensi memakai sesi login Anda; tidak ada data yang dikirim ke server lain.
-  Tombol "Kirim ke Monitra" hanya memindahkan hasil rekap ke tab Monitra di
+  Tombol "Buka di Monitra" hanya memindahkan hasil rekap ke tab Monitra di
   browser yang sama. Monitra menyimpannya di browser itu saja.
 - Ada jeda kecil antar permintaan supaya server tidak terbebani. Seluruh NTB
   (10 kantah) biasanya selesai dalam beberapa menit.

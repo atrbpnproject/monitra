@@ -10,12 +10,22 @@ Alamat: https://atrbpnproject.github.io/monitra/
 1. Jalankan ekstensi, klik **Unduh Excel**.
 2. Buka halaman ini, klik **Impor Excel** (atau seret file ke halaman).
 3. Rekap tersimpan di browser ini. Impor rekap dari tanggal lain untuk melihat perbandingan.
+4. Buat cadangan di tab Riwayat secara berkala. File cadangan `.json` bisa diimpor di komputer lain.
+
+Belum punya ekstensi? Klik **Coba dengan data contoh** di halaman kosong untuk melihat isi Monitra.
 
 Data hanya dibaca oleh browser. Tidak ada yang diunggah ke server, dan file
 Excel tidak disimpan di repositori ini.
 
 ## Isi halaman
 
+- **Alamat halaman**: tab, kantah, layanan, dan filter tersimpan di alamat (`#berkas?kantah=…&umur=3`),
+  sehingga tombol Kembali bekerja dan tampilan bisa dibagikan atau di-bookmark.
+- **Perubahan sejak rekap lalu**: kartu angka dan tabel per kantah dibandingkan dengan rekap sebelumnya
+  dari kanwil dan filter yang sama.
+- **Perlu didorong (berkas tidak bergerak)**: berkas yang posisinya sama dengan rekap sebelumnya, dihitung
+  berapa rekap berturut-turut dan sejak kapan. Tersedia di Ringkasan, Kantah, dan filter Daftar Berkas.
+- **Laporan**: Excel semua kantah (sheet ringkasan + satu sheet per kantah) dan ringkasan teks siap tempel di WhatsApp.
 - **Ringkasan**: angka utama kanwil, tunggakan per kantah menurut lama lewat jatuh tempo,
   10 layanan dan 10 posisi berkas terbanyak, tahun berkas, tabel rekap per kantah,
   catatan selisih angka rekap vs berkas detail.
@@ -31,8 +41,9 @@ Excel tidak disimpan di repositori ini.
 - **Tahun tunggakan**: setiap berkas diberi tahun tunggakan = tahun Tanggal Mulai, sama dengan pilihan
   Tahun di dashboard Kinerja Kantor Pertanahan (bukan tahun nomor berkas). Ada tabel kantah × tahun di
   Ringkasan, layanan × tahun di Kantah, kantah × tahun di Layanan, filter dan kolom di Daftar Berkas.
-- **Riwayat & Perbandingan**: rekap tersimpan, berkas baru menunggak dan berkas yang keluar
-  dari daftar antara dua rekap, tren per kantah.
+- **Riwayat & Perbandingan**: grafik tren (total atau per kantah), rekap tersimpan, berkas baru menunggak
+  dan berkas yang keluar dari daftar antara dua rekap (hanya kanwil yang sama; beda filter diberi peringatan),
+  hapus dengan Urungkan, dan cadangan/pemulihan semua rekap.
 
 "Telat" dihitung dari tanggal jatuh tempo sampai tanggal rekap diambil.
 
@@ -56,7 +67,7 @@ jalankan `./buat-zip-ekstensi.sh` lalu commit ZIP-nya.
    rekap berjalan sendiri setelah halaman dashboard dimuat ulang dalam keadaan login.
 5. Setelah selesai, hasil dikirim kembali ke tab Monitra yang meminta (lihat di bawah) dan tab itu diaktifkan.
 
-### Kirim ke Monitra (dari panel ekstensi)
+### Buka di Monitra (dari panel ekstensi)
 
 1. Ekstensi menitipkan hasil rekap di penyimpanan ekstensi lalu membuka tab
    `https://atrbpnproject.github.io/monitra/#ekstensi=<id>`, atau memberi tahu tab Monitra yang meminta.
@@ -67,6 +78,19 @@ jalankan `./buat-zip-ekstensi.sh` lalu commit ZIP-nya.
 
 Data berpindah di dalam browser yang sama dan tidak melewati server. `hasil` sama dengan
 `state.hasil` di `ekstensi/content.js`; file `.json` dengan isi itu juga bisa diimpor lewat tombol Impor.
+
+### Rekap terjadwal (versi 1.3.0)
+
+Panel ekstensi punya pilihan **Rekap otomatis terjadwal** (setiap hari kerja, jam bisa dipilih). Background
+memakai `chrome.alarms`, membuka tab dashboard, merekap kanwil yang dipilih, lalu menitipkan hasilnya dengan
+tanda `terjadwal`. `monitra-bridge.js` mengambil titipan terjadwal saat halaman Monitra dibuka atau dilihat lagi
+(`TITIPAN_TERTUNDA`). Titipan yang tidak diambil dihapus setelah 3 hari.
+
+### Versi ekstensi
+
+`VERSI_EKSTENSI` di `app.js` harus sama dengan `version` di `ekstensi/manifest.json`. Monitra menampilkan
+pita "versi baru tersedia" bila ekstensi yang terpasang lebih lama. GitHub Action `cek.yml` memeriksa hal ini,
+sintaks JavaScript, kesamaan `xlsx-writer.js` dengan `ekstensi/xlsxwriter.js`, dan kesamaan ZIP dengan folder `ekstensi/`.
 
 Kalau alamat Monitra berubah, ubah `MONITRA_URL` di `ekstensi/background.js` dan pola
 `matches` untuk `monitra-bridge.js` di `ekstensi/manifest.json`.

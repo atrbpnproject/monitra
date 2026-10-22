@@ -1,0 +1,27 @@
+name: Cek Monitra
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  cek:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Periksa sintaks JavaScript
+        run: for f in *.js ekstensi/*.js; do node --check "$f"; done
+      - name: Penulis Excel web dan ekstensi harus sama
+        run: cmp xlsx-writer.js ekstensi/xlsxwriter.js
+      - name: ZIP unduhan harus sama dengan folder ekstensi
+        run: |
+          tmp=$(mktemp -d)
+          unzip -q unduh/rekap-tunggakan-kanwil.zip -d "$tmp"
+          diff -r ekstensi "$tmp/rekap-tunggakan-kanwil" || { echo "::error::ZIP belum diperbarui. Jalankan ./buat-zip-ekstensi.sh lalu commit."; exit 1; }
+      - name: Versi ekstensi di Monitra sama dengan manifest
+        run: |
+          m=$(node -p "require('./ekstensi/manifest.json').version")
+          grep -q "const VERSI_EKSTENSI = '$m'" app.js || { echo "::error::VERSI_EKSTENSI di app.js harus $m"; exit 1; }
