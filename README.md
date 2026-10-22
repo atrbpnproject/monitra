@@ -24,6 +24,10 @@ Excel tidak disimpan di repositori ini.
 - **Layanan**: satu layanan dibandingkan di semua kantah.
 - **Posisi Berkas**: matriks posisi berkas digital × kantah.
 - **Daftar Berkas**: cari, saring, urutkan, unduh Excel hasil saringan.
+- **Berkas di luar hitungan dashboard**: daftar detail dashboard diambil per nama layanan, sehingga bisa ikut
+  membawa berkas versi SPOPP lain dengan nama sama (contoh: Roya 5 hari, padahal rekap hanya menghitung Roya
+  3 hari). Bila tepat satu kelompok durasi SPOPP jumlahnya sama dengan angka rekap, berkas lainnya ditandai
+  "di luar hitungan", tidak masuk angka Monitra, dan bisa dilihat lewat filter di Daftar Berkas.
 - **Tahun tunggakan**: setiap berkas diberi tahun tunggakan = tahun Tanggal Mulai, sama dengan pilihan
   Tahun di dashboard Kinerja Kantor Pertanahan (bukan tahun nomor berkas). Ada tabel kantah × tahun di
   Ringkasan, layanan × tahun di Kantah, kantah × tahun di Layanan, filter dan kolom di Daftar Berkas.

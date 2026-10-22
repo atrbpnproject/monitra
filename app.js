@@ -80,7 +80,7 @@
     kantah: null,
     layanan: null,
     posisiLayanan: '',
-    f: { q: '', kantah: '', prosedur: '', posisi: '', tahun: '', thn: '', umur: '' },
+    f: { q: '', kantah: '', prosedur: '', posisi: '', tahun: '', thn: '', umur: '', hitung: '' },
     sort: { key: 'telat', dir: -1 },
     page: 0,
     lsort: { key: 'berkas', dir: -1 },
@@ -96,13 +96,32 @@
       const thn = b.mulai ? Number(b.mulai.slice(0, 4)) : null;
       return { ...b, telat, thn, umur: telat === null ? -1 : umurIdx(Math.max(telat, 0)) };
     });
+    // Daftar detail diambil per nama layanan, sehingga bisa ikut membawa berkas versi SPOPP lain dengan nama yang sama
+    // (contoh: Roya 3 hari dihitung dashboard, Roya 5 hari tidak). Bila detail melebihi angka rekap dan tepat satu
+    // kelompok durasi SPOPP jumlahnya sama dengan angka rekap, berkas di luar kelompok itu ditandai luar hitungan.
+    const luar = new Set();
+    const seleksi = [];
+    r.layanan.forEach((l) => {
+      const rekap = l.m.prosesMelebihi;
+      const list = berkas.filter((b) => b.kantah === l.kantah && b.prosedur === l.prosedur);
+      if (rekap === null || rekap === undefined || list.length <= rekap) return;
+      const perDurasi = kelompok(list, 'durasi');
+      const cocok = perDurasi.filter((g) => g.n === rekap);
+      if (perDurasi.length < 2 || cocok.length !== 1) return;
+      const dihitung = cocok[0].k;
+      const keluar = list.filter((b) => b.durasi !== dihitung);
+      keluar.forEach((b) => luar.add(b));
+      seleksi.push({ kantah: l.kantah, prosedur: l.prosedur, rekap, dihitung, keluar: keluar.length, durasiLuar: [...new Set(keluar.map((b) => b.durasi))] });
+    });
+    const semua = berkas.map((b) => (luar.has(b) ? { ...b, luar: true } : b));
+    const dihitung = semua.filter((b) => !b.luar);
     const per = new Map();
     r.kantah.forEach((k) => per.set(k.nama, { ...k, berkas: [] }));
-    berkas.forEach((b) => {
+    dihitung.forEach((b) => {
       if (!per.has(b.kantah)) per.set(b.kantah, { nama: b.kantah, m: {}, jmlLayanan: 0, berkasTerambil: 0, catatan: '', berkas: [] });
       per.get(b.kantah).berkas.push(b);
     });
-    return { ...r, ref, berkas, kantahMap: per, kantahList: [...per.values()] };
+    return { ...r, ref, berkas: dihitung, luar: semua.filter((b) => b.luar), semua, seleksi, kantahMap: per, kantahList: [...per.values()] };
   }
 
   function hitungUmur(list) {
@@ -212,8 +231,17 @@
       if (k.catatan) items.push(`<b>${esc(pendek(k.nama))}</b>: ${esc(k.catatan)}`);
     });
     R.layanan.filter((l) => l.catatan).forEach((l) => items.push(`<b>${esc(pendek(l.kantah))}</b> · ${esc(l.prosedur)}: ${esc(l.catatan)}`));
-    if (!items.length) return '';
-    return `<details class="alert"><summary><b>${items.length} catatan data</b> <span class="muted">— jumlah berkas detail berbeda dari angka rekap, biasanya karena data berubah saat ekstensi berjalan.</span></summary><ul>${items.map((i) => `<li>${i}</li>`).join('')}</ul></details>`;
+    let html = '';
+    if (R.luar.length) {
+      html += `<details class="alert"><summary><b>${fmt(R.luar.length)} berkas di luar hitungan dashboard</b> <span class="muted">— tidak dimasukkan ke angka di halaman ini supaya sama dengan dashboard.</span></summary>
+        <p class="small">Daftar detail di dashboard diambil per nama layanan, sehingga ikut membawa berkas dengan nama layanan sama tetapi SPOPP berbeda. Angka rekap dashboard hanya menghitung satu versi SPOPP. Berkas ini tetap tertahan dan layak ditindaklanjuti.</p>
+        <ul>${R.seleksi.map((x) => `<li><b>${esc(pendek(x.kantah))}</b> · ${esc(x.prosedur)}: rekap ${fmt(x.rekap)} = berkas SPOPP ${fmt(x.dihitung)} hari; ${fmt(x.keluar)} berkas SPOPP ${x.durasiLuar.map(fmt).join('/')} hari di luar hitungan</li>`).join('')}</ul>
+        <p><a href="#" ${go({ tab: 'berkas', f: { hitung: 'luar' } })}>Lihat ${fmt(R.luar.length)} berkas ini di Daftar Berkas</a></p></details>`;
+    }
+    if (items.length) {
+      html += `<details class="alert"><summary><b>${items.length} catatan data</b> <span class="muted">— jumlah berkas detail berbeda dari angka rekap. Bisa karena data berubah saat ekstensi berjalan atau ada layanan yang gagal diambil; rekap ulang untuk memastikan.</span></summary><ul>${items.map((i) => `<li>${i}</li>`).join('')}</ul></details>`;
+    }
+    return html;
   }
 
   function ringkasan(R) {
@@ -355,7 +383,7 @@
     return `<div class="tbl-wrap"><table><thead><tr>
       ${denganKantah ? '<th>Kantah</th>' : ''}<th>Layanan</th><th>No. berkas</th><th class="num">Tahun berkas</th><th class="num">Tahun tunggakan</th><th>Posisi berkas</th>
       <th>Mulai</th><th class="num">SPOPP</th><th>Jatuh tempo</th><th class="num">Telat (hari)</th></tr></thead><tbody>
-      ${list.map((b) => `<tr>${denganKantah ? `<td>${esc(pendek(b.kantah))}</td>` : ''}<td>${esc(b.prosedur)}</td><td>${esc(b.nomor)}</td><td class="num">${esc(b.tahun)}</td><td class="num">${esc(b.thn ?? '')}</td>
+      ${list.map((b) => `<tr>${denganKantah ? `<td>${esc(pendek(b.kantah))}</td>` : ''}<td>${esc(b.prosedur)}</td><td>${esc(b.nomor)}${b.luar ? ' <span class="pill warn" title="Tidak dihitung di angka rekap dashboard (SPOPP berbeda)">di luar hitungan</span>' : ''}</td><td class="num">${esc(b.tahun)}</td><td class="num">${esc(b.thn ?? '')}</td>
         <td>${esc(b.posisi)}</td><td class="num">${tgl(b.mulai)}</td><td class="num">${b.durasi === '' ? '' : fmt(b.durasi)}</td><td class="num">${tgl(b.jatuhTempo)}</td>
         <td class="num">${b.telat === null ? '' : `<span class="pill ${b.telat > 365 ? 'crit' : b.telat > 90 ? 'warn' : ''}">${fmt(b.telat)}</span>`}</td></tr>`).join('')}
       </tbody></table></div>`;
@@ -458,13 +486,14 @@
   function saringBerkas(R) {
     const f = S.f;
     const q = f.q.trim().toLowerCase();
-    return R.berkas.filter((b) => (!f.kantah || b.kantah === f.kantah) && (!f.prosedur || b.prosedur === f.prosedur) && (!f.posisi || b.posisi === f.posisi)
+    const dasar = f.hitung === 'luar' ? R.luar : f.hitung === 'semua' ? R.semua : R.berkas;
+    return dasar.filter((b) => (!f.kantah || b.kantah === f.kantah) && (!f.prosedur || b.prosedur === f.prosedur) && (!f.posisi || b.posisi === f.posisi)
       && (!f.tahun || String(b.tahun) === f.tahun) && (!f.thn || String(b.thn ?? '') === f.thn) && (f.umur === '' || String(b.umur) === f.umur)
       && (!q || b.nomor.toLowerCase().includes(q) || b.prosedur.toLowerCase().includes(q) || b.posisi.toLowerCase().includes(q)));
   }
   function tabBerkas(R) {
     const ops = (key, label, fmtLbl = (x) => x) => {
-      const vals = [...new Set(R.berkas.map((b) => String(b[key])))].sort((a, b) => (key === 'tahun' ? b - a : a.localeCompare(b, 'id')));
+      const vals = [...new Set(R.semua.map((b) => String(b[key])))].sort((a, b) => (key === 'tahun' ? b - a : a.localeCompare(b, 'id')));
       return `<select data-f="${key}"><option value="">${label}</option>${vals.map((v) => `<option ${S.f[key] === v ? 'selected' : ''} value="${esc(v)}">${esc(fmtLbl(v))}</option>`).join('')}</select>`;
     };
     main.innerHTML = `
@@ -476,6 +505,7 @@
         ${ops('thn', 'Semua tahun tunggakan', (v) => (v && v !== 'null' ? 'Tahun tunggakan ' + v : '(tanpa tanggal mulai)'))}
         ${ops('tahun', 'Semua tahun berkas', (v) => 'Tahun berkas ' + v)}
         <select data-f="umur"><option value="">Semua umur</option>${UMUR.map((u, i) => `<option ${S.f.umur === String(i) ? 'selected' : ''} value="${i}">Telat ${u.label}</option>`).join('')}</select>
+        ${R.luar.length ? `<select data-f="hitung"><option value="">Dihitung dashboard</option><option value="luar" ${S.f.hitung === 'luar' ? 'selected' : ''}>Di luar hitungan dashboard (${fmt(R.luar.length)})</option><option value="semua" ${S.f.hitung === 'semua' ? 'selected' : ''}>Semua berkas detail</option></select>` : ''}
         <button class="btn" data-act="reset">Hapus filter</button>
         <button class="btn" data-act="unduh-berkas">Unduh Excel</button>
       </div>
@@ -498,7 +528,7 @@
     const head = cols.map(([k, l, num]) => `<th class="sort ${num ? 'num' : ''}" data-bsort="${k}">${l}${st.key === k ? (st.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('');
     const t = tabelBerkas(slice).replace(/<thead>[\s\S]*?<\/thead>/, `<thead><tr>${head}</tr></thead>`);
     $('#berkas-tbl').innerHTML = `
-      <p class="muted small">${fmt(list.length)} dari ${fmt(R.berkas.length)} berkas · median telat ${list.length ? fmt(median(list.map((b) => b.telat))) : '–'} hari</p>
+      <p class="muted small">${fmt(list.length)} dari ${fmt((S.f.hitung === 'luar' ? R.luar : S.f.hitung === 'semua' ? R.semua : R.berkas).length)} berkas${S.f.hitung === 'luar' ? ' di luar hitungan dashboard' : ''} · median telat ${list.length ? fmt(median(list.map((b) => b.telat))) : '–'} hari</p>
       <div class="card" style="padding:0">${t}</div>
       <div class="pager"><button class="btn" data-page="-1" ${S.page ? '' : 'disabled'}>‹ Sebelumnya</button>
         <span class="muted small">Halaman ${S.page + 1} dari ${hal}</span>
@@ -578,8 +608,8 @@
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
   }
   const barisBerkas = (list) => [
-    ['No', 'Kantah', 'Layanan', 'Nomor Berkas', 'Tahun Berkas', 'Posisi Berkas Digital', 'Status', 'Tanggal Mulai', 'SPOPP (Hari)', 'Jatuh Tempo', 'Tahun Tunggakan', 'Telat (Hari)', 'Kelompok Umur'],
-    ...list.map((b, i) => [i + 1, b.kantah, b.prosedur, b.nomor, b.tahun, b.posisi, b.status, tgl(b.mulai), b.durasi, tgl(b.jatuhTempo), b.thn ?? '', b.telat ?? '', b.umur >= 0 ? UMUR[b.umur].label : '']),
+    ['No', 'Kantah', 'Layanan', 'Nomor Berkas', 'Tahun Berkas', 'Posisi Berkas Digital', 'Status', 'Tanggal Mulai', 'SPOPP (Hari)', 'Jatuh Tempo', 'Tahun Tunggakan', 'Telat (Hari)', 'Kelompok Umur', 'Hitungan Dashboard'],
+    ...list.map((b, i) => [i + 1, b.kantah, b.prosedur, b.nomor, b.tahun, b.posisi, b.status, tgl(b.mulai), b.durasi, tgl(b.jatuhTempo), b.thn ?? '', b.telat ?? '', b.umur >= 0 ? UMUR[b.umur].label : '', b.luar ? 'Di luar hitungan' : 'Dihitung']),
   ];
 
   // ---------- impor ----------
@@ -628,7 +658,7 @@
       const g = JSON.parse(el.dataset.go);
       if (g.kantah) S.kantah = g.kantah;
       if (g.layanan) S.layanan = g.layanan;
-      if (g.f) { S.f = { q: '', kantah: '', prosedur: '', posisi: '', tahun: '', thn: '', umur: '', ...g.f }; S.page = 0; }
+      if (g.f) { S.f = { q: '', kantah: '', prosedur: '', posisi: '', tahun: '', thn: '', umur: '', hitung: '', ...g.f }; S.page = 0; }
       return setTab(g.tab);
     }
     if (el.dataset.sort) {
@@ -660,7 +690,7 @@
       return;
     }
     if (act === 'cetak') window.print();
-    if (act === 'reset') { S.f = { q: '', kantah: '', prosedur: '', posisi: '', tahun: '', thn: '', umur: '' }; S.page = 0; render(); }
+    if (act === 'reset') { S.f = { q: '', kantah: '', prosedur: '', posisi: '', tahun: '', thn: '', umur: '', hitung: '' }; S.page = 0; render(); }
     if (act === 'unduh-berkas') unduhXlsx(`Berkas_Tunggakan_${pendekKanwil(R.kanwil)}_${R.ref}`, [{ name: 'Berkas', rows: barisBerkas(saringBerkas(R).sort((a, b) => (b.telat ?? 0) - (a.telat ?? 0))) }]);
     if (act === 'unduh-kantah') {
       const k = R.kantahMap.get(S.kantah);
