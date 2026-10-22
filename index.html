@@ -3,20 +3,44 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Rekap Tunggakan SPOPP</title>
+  <title>Monitra · Rekap Tunggakan SPOPP</title>
+  <meta name="theme-color" content="#0b1530">
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
   <meta name="description" content="Dashboard berkas proses melebihi SPOPP dari hasil ekstensi Rekap Tunggakan Kanwil. Data dibaca dan disimpan di browser Anda saja.">
   <link rel="stylesheet" href="style.css">
+  <script>
+    // Tema dan splash diatur sebelum halaman tergambar supaya tidak berkedip.
+    try {
+      var tema = localStorage.getItem('rt.tema');
+      if (tema === 'light' || tema === 'dark') document.documentElement.dataset.theme = tema;
+      if (sessionStorage.getItem('rt.splash')) document.documentElement.classList.add('tanpa-splash');
+    } catch (e) {}
+  </script>
 </head>
 <body>
+  <div id="splash" class="splash" aria-hidden="true">
+    <div class="splash-cahaya"></div>
+    <div class="splash-isi">
+      <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="sd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1d3566"/><stop offset="1" stop-color="#0a1428"/></linearGradient><linearGradient id="se" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e3a8"/><stop offset=".5" stop-color="#d4af5f"/><stop offset="1" stop-color="#9c7630"/></linearGradient></defs><rect x="2" y="2" width="60" height="60" rx="15" fill="url(#sd)"/><rect class="logo-bingkai" x="5.5" y="5.5" width="53" height="53" rx="11.5" fill="none" stroke="url(#se)" stroke-width="1.2" opacity=".75" pathLength="1"/><path class="logo-nadi" d="M11 40h8l6-19 7 15 7-15 6 19h8" fill="none" stroke="url(#se)" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/><circle class="logo-titik" cx="53" cy="40" r="3.4" fill="#f6e3a8"/></svg>
+      <div class="splash-nama">MONITRA</div>
+      <div class="splash-sub">Rekap Tunggakan SPOPP</div>
+      <div class="splash-garis"><i></i></div>
+    </div>
+  </div>
+
   <header class="top">
     <div class="brand">
-      <strong>Rekap Tunggakan SPOPP</strong>
-      <span id="meta" class="muted"></span>
+      <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="hd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1d3566"/><stop offset="1" stop-color="#0a1428"/></linearGradient><linearGradient id="he" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e3a8"/><stop offset=".5" stop-color="#d4af5f"/><stop offset="1" stop-color="#9c7630"/></linearGradient></defs><rect x="2" y="2" width="60" height="60" rx="15" fill="url(#hd)"/><rect class="logo-bingkai" x="5.5" y="5.5" width="53" height="53" rx="11.5" fill="none" stroke="url(#he)" stroke-width="1.2" opacity=".75" pathLength="1"/><path class="logo-nadi" d="M11 40h8l6-19 7 15 7-15 6 19h8" fill="none" stroke="url(#he)" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/><circle class="logo-titik" cx="53" cy="40" r="3.4" fill="#f6e3a8"/></svg>
+      <span class="brand-teks">
+        <strong>Monitra <em>Rekap Tunggakan SPOPP</em></strong>
+        <span id="meta" class="muted"></span>
+      </span>
     </div>
     <div class="top-actions">
       <select id="pilih-rekap" aria-label="Pilih rekap" hidden></select>
       <button id="rekap-sekarang" class="btn" data-act="rekap-sekarang">Rekap Sekarang</button>
       <span id="ext-label" class="sr-only" aria-live="polite"></span>
+      <button id="tema" class="btn ikon" data-act="tema" type="button" aria-label="Ganti tema terang/gelap" title="Ganti tema terang/gelap"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="bulan" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/><g class="matahari"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></g></svg></button>
       <label class="btn primary">
         Impor Excel
         <input id="file" type="file" accept=".xlsx,.json" multiple hidden>

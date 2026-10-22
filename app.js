@@ -40,6 +40,7 @@
     return false;
   };
   const hp = window.matchMedia('(max-width: 640px)');
+  const gerakHemat = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   // toast(pesan, ms, { label, fn }) — aksi opsional, misalnya "Urungkan".
   function toast(msg, ms = 3500, aksi) {
@@ -341,24 +342,57 @@
       b.classList.toggle('on', b.dataset.tab === S.tab);
       b.setAttribute('aria-selected', b.dataset.tab === S.tab ? 'true' : 'false');
     });
-    if (!R) { main.innerHTML = kosong(); catat(push); return; }
+    if (!R) { main.innerHTML = kosong(); animasiMasuk('kosong'); catat(push); return; }
     const f = { ringkasan, kantah: tabKantah, layanan: tabLayanan, posisi: tabPosisi, berkas: tabBerkas, riwayat: tabRiwayat }[S.tab] || ringkasan;
     f(R);
     aksesibel(main);
+    animasiMasuk(S.tab + '|' + R.id);
     const on = $('#tabs .on');
     if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     catat(push);
+  }
+  // Animasi masuk hanya saat tab atau rekap berganti, bukan setiap kali filter atau urutan diubah.
+  function animasiMasuk(kunci) {
+    if (animasiMasuk.k === kunci) return;
+    animasiMasuk.k = kunci;
+    main.classList.remove('tampil');
+    void main.offsetWidth;
+    main.classList.add('tampil');
+    if (gerakHemat.matches) return;
+    main.querySelectorAll('.kpi .v').forEach((el) => {
+      const m = el.childElementCount ? null : el.textContent.match(/^(\d{1,3}(?:\.\d{3})*)(\D*)$/);
+      const target = m ? Number(m[1].replace(/\./g, '')) : 0;
+      if (target < 10) return;
+      const akhir = el.textContent, t0 = performance.now(), lama = 900;
+      const langkah = (t) => {
+        const x = Math.min(1, (t - t0) / lama);
+        el.textContent = x < 1 ? fmt(Math.round(target * (1 - Math.pow(1 - x, 3)))) + m[2] : akhir;
+        if (x < 1 && el.isConnected) requestAnimationFrame(langkah);
+      };
+      requestAnimationFrame(langkah);
+    });
+  }
+  function gantiTema() {
+    const root = document.documentElement;
+    const gelap = root.dataset.theme ? root.dataset.theme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    root.classList.add('ganti-tema');
+    root.dataset.theme = gelap ? 'light' : 'dark';
+    simpanPref('tema', root.dataset.theme);
+    setTimeout(() => root.classList.remove('ganti-tema'), 500);
   }
   const pendekKanwil = (n) => String(n).replace(/^Kantor Wilayah (Provinsi )?/i, '');
 
   function kosong() {
     return `<div class="empty">
+      <img class="empty-logo" src="logo.svg" alt="" width="88" height="88">
+      <div class="empty-kicker">Selamat datang di Monitra</div>
       <h2>Belum ada rekap</h2>
       <p class="lead">Klik <b>Rekap Sekarang</b> untuk menjalankan ekstensi Rekap Tunggakan Kanwil, atau impor file Excel hasil tombol <b>Unduh Excel</b> pada ekstensi.</p>
       <p class="tombol-baris"><button class="btn primary" data-act="rekap-sekarang">Rekap Sekarang</button> <button class="btn" data-act="contoh">Coba dengan data contoh</button></p>
-      <label class="dropzone" style="display:block">
+      <label class="dropzone">
         <input type="file" accept=".xlsx,.json" multiple hidden data-file>
-        <div style="font-size:16px;font-weight:600">Klik untuk memilih file, atau seret file ke halaman ini</div>
+        <svg class="dz-ikon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4m0 0L7.5 8.5M12 4l4.5 4.5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+        <div class="dz-judul">Klik untuk memilih file, atau seret file ke halaman ini</div>
         <div class="muted small">Format: Tunggakan_SPOPP_*.xlsx, atau file cadangan Monitra (.json). Bisa beberapa file sekaligus.</div>
       </label>
       <ol class="small">
@@ -684,7 +718,7 @@
       const v = sel.get(p + '|' + k.nama) || 0;
       if (!v) return '<td class="h"></td>';
       const t = Math.round(12 + (v / mx) * 88);
-      return `<td class="h" style="background:color-mix(in srgb, var(--bar) ${t}%, var(--heat-0));color:${t > 55 ? '#fff' : 'inherit'};cursor:pointer" ${go({ tab: 'berkas', f: { kantah: k.nama, posisi: p, prosedur: S.posisiLayanan } })} data-tip="${esc(p)} · ${esc(pendek(k.nama))}: ${fmt(v)} berkas" aria-label="${esc(p)} di ${esc(pendek(k.nama))}: ${fmt(v)} berkas">${fmt(v)}</td>`;
+      return `<td class="h" style="background:color-mix(in srgb, var(--bar) ${t}%, var(--heat-0));color:${t > 55 ? 'var(--on-bar)' : 'inherit'};cursor:pointer" ${go({ tab: 'berkas', f: { kantah: k.nama, posisi: p, prosedur: S.posisiLayanan } })} data-tip="${esc(p)} · ${esc(pendek(k.nama))}: ${fmt(v)} berkas" aria-label="${esc(p)} di ${esc(pendek(k.nama))}: ${fmt(v)} berkas">${fmt(v)}</td>`;
     };
     const layOps = kelompok(R.berkas, 'prosedur').map((g) => g.k).sort((a, b) => a.localeCompare(b, 'id'));
     main.innerHTML = `
@@ -791,7 +825,7 @@
     const area = titik.length > 1 ? `<path d="${d} L${x(titik.length - 1)},${y(0)} L${x(0)},${y(0)} Z" class="area"/>` : '';
     const dots = titik.map((t, i) => `<circle cx="${x(i)}" cy="${y(t.n)}" r="${i === titik.length - 1 ? 5 : 3.5}" class="dot" data-tip="${waktuLabel(t.waktu)}: ${fmt(t.n)} berkas"><title>${waktuLabel(t.waktu)}: ${fmt(t.n)} berkas</title></circle>`).join('');
     const akhir = titik[titik.length - 1];
-    return `<svg viewBox="0 0 ${W} ${H}" class="tren" role="img" aria-label="Tren berkas tunggakan, terakhir ${fmt(akhir.n)} berkas">${grid}${area}<path d="${d}" class="garis"/>${dots}${label}
+    return `<svg viewBox="0 0 ${W} ${H}" class="tren" role="img" aria-label="Tren berkas tunggakan, terakhir ${fmt(akhir.n)} berkas">${grid}${area}<path d="${d}" class="garis" pathLength="1"/>${dots}${label}
       <text x="${x(titik.length - 1)}" y="${y(akhir.n) - 10}" text-anchor="end" class="ax kuat">${fmt(akhir.n)}</text></svg>`;
   }
 
@@ -1037,6 +1071,7 @@
     }
     const act = el.dataset.act;
     const R = S.R;
+    if (act === 'tema') return gantiTema();
     if (act === 'rekap-sekarang') return rekapSekarang();
     if (act === 'periksa-lagi') return periksaLagi();
     if (act === 'tutup-status') { $('#status-rekap').hidden = true; return; }
@@ -1260,5 +1295,19 @@
     console.error(err);
     main.innerHTML = `<div class="empty"><h2>Rekap tidak bisa dibuka</h2><p class="lead">${esc(err.message)}</p><p>Coba muat ulang halaman. Bila tetap gagal, browser ini mungkin memblokir penyimpanan situs (mode penyamaran atau pengaturan privasi).</p></div>`;
   });
+  // Splash tampil paling sedikit sebentar pada kunjungan pertama di sesi ini; klik untuk melewati.
+  function tutupSplash() {
+    const sp = $('#splash');
+    if (!sp || sp.classList.contains('pergi')) return;
+    const lewati = document.documentElement.classList.contains('tanpa-splash');
+    const tunggu = lewati ? 0 : Math.max(0, (gerakHemat.matches ? 500 : 2000) - performance.now());
+    setTimeout(() => {
+      sp.classList.add('pergi');
+      try { sessionStorage.setItem('rt.splash', '1'); } catch (e) { /* abaikan */ }
+      setTimeout(() => sp.remove(), 800);
+    }, tunggu);
+  }
+  $('#splash').addEventListener('click', () => { document.documentElement.classList.add('tanpa-splash'); tutupSplash(); });
+  siap.finally(tutupSplash);
   window.postMessage({ type: 'REKAP_EKSTENSI_PING' }, '*');
 })();
