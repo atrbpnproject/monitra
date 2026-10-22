@@ -24,6 +24,9 @@ Excel tidak disimpan di repositori ini.
 - **Layanan**: satu layanan dibandingkan di semua kantah.
 - **Posisi Berkas**: matriks posisi berkas digital × kantah.
 - **Daftar Berkas**: cari, saring, urutkan, unduh Excel hasil saringan.
+- **Tahun tunggakan**: setiap berkas diberi tahun tunggakan = tahun Tanggal Mulai, sama dengan pilihan
+  Tahun di dashboard Kinerja Kantor Pertanahan (bukan tahun nomor berkas). Ada tabel kantah × tahun di
+  Ringkasan, layanan × tahun di Kantah, kantah × tahun di Layanan, filter dan kolom di Daftar Berkas.
 - **Riwayat & Perbandingan**: rekap tersimpan, berkas baru menunggak dan berkas yang keluar
   dari daftar antara dua rekap, tren per kantah.
 

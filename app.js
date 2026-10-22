@@ -80,7 +80,7 @@
     kantah: null,
     layanan: null,
     posisiLayanan: '',
-    f: { q: '', kantah: '', prosedur: '', posisi: '', tahun: '', umur: '' },
+    f: { q: '', kantah: '', prosedur: '', posisi: '', tahun: '', thn: '', umur: '' },
     sort: { key: 'telat', dir: -1 },
     page: 0,
     lsort: { key: 'berkas', dir: -1 },
@@ -92,7 +92,9 @@
     const refMs = Date.parse(ref + 'T00:00:00Z');
     const berkas = r.berkas.map((b) => {
       const telat = b.jatuhTempo ? Math.round((refMs - Date.parse(b.jatuhTempo + 'T00:00:00Z')) / 864e5) : null;
-      return { ...b, telat, umur: telat === null ? -1 : umurIdx(Math.max(telat, 0)) };
+      // Tahun tunggakan = tahun Tanggal Mulai, sama dengan filter Tahun di dashboard Kinerja Kantor Pertanahan.
+      const thn = b.mulai ? Number(b.mulai.slice(0, 4)) : null;
+      return { ...b, telat, thn, umur: telat === null ? -1 : umurIdx(Math.max(telat, 0)) };
     });
     const per = new Map();
     r.kantah.forEach((k) => per.set(k.nama, { ...k, berkas: [] }));
@@ -136,6 +138,23 @@
     return `<div class="cols">${u.map((n, i) => `<div class="col"><div class="top-val">${fmt(n)}</div><div class="bar" style="height:${n / mx * 100}%;background:${warnaUmur(i)}" data-tip="${UMUR[i].label}: ${fmt(n)} berkas (${pct(n, tot)})"></div></div>`).join('')}</div>
       <div class="cols-x">${UMUR.map((x) => `<span>${x.label}</span>`).join('')}</div>`;
   }
+  // Berkas per tahun tunggakan (terbaru dulu) sebagai baris hbars; f = filter tambahan untuk Daftar Berkas.
+  function perTahun(list, f = {}) {
+    return kelompok(list, 'thn').sort((a, b) => (b.k ?? 0) - (a.k ?? 0))
+      .map((g) => ({ label: g.k ? String(g.k) : '(tanpa tanggal mulai)', total: g.n, go: { tab: 'berkas', f: { ...f, thn: String(g.k ?? '') } } }));
+  }
+  // Tabel baris × tahun tunggakan. baris: [{ label, list, f }]
+  function tabelTahun(baris, semua) {
+    const th = [...new Set(semua.map((b) => b.thn))].filter((x) => x).sort((a, b) => b - a);
+    const sel = (list, f, t) => {
+      const n = list.filter((b) => b.thn === t).length;
+      return n ? `<td class="num"><a href="#" ${go({ tab: 'berkas', f: { ...f, thn: String(t) } })}>${fmt(n)}</a></td>` : '<td class="num muted">–</td>';
+    };
+    return `<div class="tbl-wrap"><table><thead><tr><th></th>${th.map((t) => `<th class="num">${t}</th>`).join('')}<th class="num">Total</th></tr></thead>
+      <tbody>${baris.map((r) => `<tr><td>${esc(r.label)}</td>${th.map((t) => sel(r.list, r.f, t)).join('')}<td class="num"><b>${fmt(r.list.length)}</b></td></tr>`).join('')}</tbody>
+      <tfoot><tr><td>Total</td>${th.map((t) => `<td class="num">${fmt(semua.filter((b) => b.thn === t).length)}</td>`).join('')}<td class="num">${fmt(semua.length)}</td></tr></tfoot></table></div>`;
+  }
+  const CATATAN_TAHUN = 'Tahun tunggakan = tahun Tanggal Mulai berkas, sama dengan pilihan Tahun di dashboard Kinerja Kantor Pertanahan.';
   const kpi = (v, l, s) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
   const go = (o) => `data-go='${esc(JSON.stringify(o))}'`;
 
@@ -209,7 +228,6 @@
       .sort((a, b) => b.total - a.total);
     const lay = kelompok(B, 'prosedur').slice(0, 10).map((g) => ({ label: g.k, total: g.n, go: { tab: 'layanan', layanan: g.k } }));
     const pos = kelompok(B, 'posisi').slice(0, 10).map((g) => ({ label: g.k, total: g.n, go: { tab: 'berkas', f: { posisi: g.k } } }));
-    const thn = kelompok(B, 'tahun').sort((a, b) => b.k - a.k).map((g) => ({ label: String(g.k || '(kosong)'), total: g.n, go: { tab: 'berkas', f: { tahun: String(g.k) } } }));
 
     const rows = R.kantahList.map((k) => ({
       nama: pendek(k.nama), full: k.nama, ...k.m,
@@ -249,9 +267,14 @@
       <div class="grid g2">
         <div class="card"><h3>Sebaran lama lewat jatuh tempo</h3>${kolomUmur(u)}
           <p class="muted small">Dihitung dari jatuh tempo sampai tanggal rekap (${tgl(R.ref)}).</p></div>
-        <div class="card"><h3>Tahun berkas</h3>${hbars(thn)}</div>
+        <div class="card"><div class="card-head"><h3>Tunggakan per tahun</h3><span class="muted small">menurut tahun Tanggal Mulai</span></div>${hbars(perTahun(B))}</div>
         <div class="card"><div class="card-head"><h3>10 layanan dengan tunggakan terbanyak</h3></div>${hbars(lay)}</div>
         <div class="card"><div class="card-head"><h3>10 posisi berkas terbanyak</h3><span class="muted small">Berkas sedang tertahan di jabatan ini</span></div>${hbars(pos)}</div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Tunggakan per kantah dan tahun</h3><span class="muted small">Klik angka untuk daftar berkasnya</span></div>
+        ${tabelTahun([...R.kantahList].sort((a, b) => b.berkas.length - a.berkas.length).map((k) => ({ label: pendek(k.nama), list: k.berkas, f: { kantah: k.nama } })), B)}
+        <p class="muted small">${CATATAN_TAHUN}</p>
       </div>
       <div class="card">
         <div class="card-head"><h3>Rekap per kantah</h3><span class="muted small">Angka masuk, proses, selesai dari dashboard; berkas detail dan umur dari daftar berkas</span></div>
@@ -306,6 +329,11 @@
         <div class="card"><div class="card-head"><h3>Posisi berkas</h3><span class="muted small">Klik untuk daftar berkasnya</span></div>${hbars(pos)}</div>
       </div>
       <div class="card">
+        <div class="card-head"><h3>Layanan bertunggakan per tahun</h3><span class="muted small">Klik angka untuk daftar berkasnya</span></div>
+        ${tabelTahun(kelompok(B, 'prosedur').map((g) => ({ label: g.k, list: g.v, f: { kantah: k.nama, prosedur: g.k } })), B)}
+        <p class="muted small">${CATATAN_TAHUN}</p>
+      </div>
+      <div class="card">
         <div class="card-head"><h3>Layanan bertunggakan</h3>${legendUmur()}</div>
         ${tabelSort('lk', [
           { key: 'prosedur', label: 'Layanan' },
@@ -325,9 +353,9 @@
 
   function tabelBerkas(list, denganKantah = true) {
     return `<div class="tbl-wrap"><table><thead><tr>
-      ${denganKantah ? '<th>Kantah</th>' : ''}<th>Layanan</th><th>No. berkas</th><th class="num">Tahun</th><th>Posisi berkas</th>
+      ${denganKantah ? '<th>Kantah</th>' : ''}<th>Layanan</th><th>No. berkas</th><th class="num">Tahun berkas</th><th class="num">Tahun tunggakan</th><th>Posisi berkas</th>
       <th>Mulai</th><th class="num">SPOPP</th><th>Jatuh tempo</th><th class="num">Telat (hari)</th></tr></thead><tbody>
-      ${list.map((b) => `<tr>${denganKantah ? `<td>${esc(pendek(b.kantah))}</td>` : ''}<td>${esc(b.prosedur)}</td><td>${esc(b.nomor)}</td><td class="num">${esc(b.tahun)}</td>
+      ${list.map((b) => `<tr>${denganKantah ? `<td>${esc(pendek(b.kantah))}</td>` : ''}<td>${esc(b.prosedur)}</td><td>${esc(b.nomor)}</td><td class="num">${esc(b.tahun)}</td><td class="num">${esc(b.thn ?? '')}</td>
         <td>${esc(b.posisi)}</td><td class="num">${tgl(b.mulai)}</td><td class="num">${b.durasi === '' ? '' : fmt(b.durasi)}</td><td class="num">${tgl(b.jatuhTempo)}</td>
         <td class="num">${b.telat === null ? '' : `<span class="pill ${b.telat > 365 ? 'crit' : b.telat > 90 ? 'warn' : ''}">${fmt(b.telat)}</span>`}</td></tr>`).join('')}
       </tbody></table></div>`;
@@ -367,6 +395,10 @@
             return { label: pendek(k.nama), total: v.length, segs: hitungUmur(v), go: { tab: 'berkas', f: { kantah: k.nama, prosedur: sel.k } } };
           }).filter((r) => r.total).sort((a, b) => b.total - a.total), { stacked: true })}</div>
           <div class="card"><h3>Posisi berkas</h3>${hbars(pos)}</div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Per kantah dan tahun tunggakan</h3><span class="muted small">menurut tahun Tanggal Mulai</span></div>
+          ${tabelTahun(R.kantahList.map((k) => ({ label: pendek(k.nama), list: sel.v.filter((b) => b.kantah === k.nama), f: { kantah: k.nama, prosedur: sel.k } })).filter((r) => r.list.length).sort((a, b) => b.list.length - a.list.length), sel.v)}
         </div>
         <div class="card"><h3>Perbandingan antar kantah</h3>
           ${tabelSort('lp', [
@@ -427,7 +459,7 @@
     const f = S.f;
     const q = f.q.trim().toLowerCase();
     return R.berkas.filter((b) => (!f.kantah || b.kantah === f.kantah) && (!f.prosedur || b.prosedur === f.prosedur) && (!f.posisi || b.posisi === f.posisi)
-      && (!f.tahun || String(b.tahun) === f.tahun) && (f.umur === '' || String(b.umur) === f.umur)
+      && (!f.tahun || String(b.tahun) === f.tahun) && (!f.thn || String(b.thn ?? '') === f.thn) && (f.umur === '' || String(b.umur) === f.umur)
       && (!q || b.nomor.toLowerCase().includes(q) || b.prosedur.toLowerCase().includes(q) || b.posisi.toLowerCase().includes(q)));
   }
   function tabBerkas(R) {
@@ -441,7 +473,8 @@
         ${ops('kantah', 'Semua kantah', pendek)}
         ${ops('prosedur', 'Semua layanan')}
         ${ops('posisi', 'Semua posisi')}
-        ${ops('tahun', 'Semua tahun berkas')}
+        ${ops('thn', 'Semua tahun tunggakan', (v) => (v && v !== 'null' ? 'Tahun tunggakan ' + v : '(tanpa tanggal mulai)'))}
+        ${ops('tahun', 'Semua tahun berkas', (v) => 'Tahun berkas ' + v)}
         <select data-f="umur"><option value="">Semua umur</option>${UMUR.map((u, i) => `<option ${S.f.umur === String(i) ? 'selected' : ''} value="${i}">Telat ${u.label}</option>`).join('')}</select>
         <button class="btn" data-act="reset">Hapus filter</button>
         <button class="btn" data-act="unduh-berkas">Unduh Excel</button>
@@ -461,7 +494,7 @@
     const hal = Math.max(1, Math.ceil(list.length / PER_HAL));
     S.page = Math.min(S.page, hal - 1);
     const slice = list.slice(S.page * PER_HAL, S.page * PER_HAL + PER_HAL);
-    const cols = [['kantah', 'Kantah'], ['prosedur', 'Layanan'], ['nomor', 'No. berkas'], ['tahun', 'Tahun', 1], ['posisi', 'Posisi berkas'], ['mulai', 'Mulai', 1], ['durasi', 'SPOPP', 1], ['jatuhTempo', 'Jatuh tempo', 1], ['telat', 'Telat (hari)', 1]];
+    const cols = [['kantah', 'Kantah'], ['prosedur', 'Layanan'], ['nomor', 'No. berkas'], ['tahun', 'Tahun berkas', 1], ['thn', 'Tahun tunggakan', 1], ['posisi', 'Posisi berkas'], ['mulai', 'Mulai', 1], ['durasi', 'SPOPP', 1], ['jatuhTempo', 'Jatuh tempo', 1], ['telat', 'Telat (hari)', 1]];
     const head = cols.map(([k, l, num]) => `<th class="sort ${num ? 'num' : ''}" data-bsort="${k}">${l}${st.key === k ? (st.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('');
     const t = tabelBerkas(slice).replace(/<thead>[\s\S]*?<\/thead>/, `<thead><tr>${head}</tr></thead>`);
     $('#berkas-tbl').innerHTML = `
@@ -545,8 +578,8 @@
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
   }
   const barisBerkas = (list) => [
-    ['No', 'Kantah', 'Layanan', 'Nomor Berkas', 'Tahun Berkas', 'Posisi Berkas Digital', 'Status', 'Tanggal Mulai', 'SPOPP (Hari)', 'Jatuh Tempo', 'Telat (Hari)', 'Kelompok Umur'],
-    ...list.map((b, i) => [i + 1, b.kantah, b.prosedur, b.nomor, b.tahun, b.posisi, b.status, tgl(b.mulai), b.durasi, tgl(b.jatuhTempo), b.telat ?? '', b.umur >= 0 ? UMUR[b.umur].label : '']),
+    ['No', 'Kantah', 'Layanan', 'Nomor Berkas', 'Tahun Berkas', 'Posisi Berkas Digital', 'Status', 'Tanggal Mulai', 'SPOPP (Hari)', 'Jatuh Tempo', 'Tahun Tunggakan', 'Telat (Hari)', 'Kelompok Umur'],
+    ...list.map((b, i) => [i + 1, b.kantah, b.prosedur, b.nomor, b.tahun, b.posisi, b.status, tgl(b.mulai), b.durasi, tgl(b.jatuhTempo), b.thn ?? '', b.telat ?? '', b.umur >= 0 ? UMUR[b.umur].label : '']),
   ];
 
   // ---------- impor ----------
@@ -591,10 +624,11 @@
     if (!el) return;
     if (el.dataset.tab) return setTab(el.dataset.tab);
     if (el.dataset.go) {
+      e.preventDefault();
       const g = JSON.parse(el.dataset.go);
       if (g.kantah) S.kantah = g.kantah;
       if (g.layanan) S.layanan = g.layanan;
-      if (g.f) { S.f = { q: '', kantah: '', prosedur: '', posisi: '', tahun: '', umur: '', ...g.f }; S.page = 0; }
+      if (g.f) { S.f = { q: '', kantah: '', prosedur: '', posisi: '', tahun: '', thn: '', umur: '', ...g.f }; S.page = 0; }
       return setTab(g.tab);
     }
     if (el.dataset.sort) {
@@ -626,7 +660,7 @@
       return;
     }
     if (act === 'cetak') window.print();
-    if (act === 'reset') { S.f = { q: '', kantah: '', prosedur: '', posisi: '', tahun: '', umur: '' }; S.page = 0; render(); }
+    if (act === 'reset') { S.f = { q: '', kantah: '', prosedur: '', posisi: '', tahun: '', thn: '', umur: '' }; S.page = 0; render(); }
     if (act === 'unduh-berkas') unduhXlsx(`Berkas_Tunggakan_${pendekKanwil(R.kanwil)}_${R.ref}`, [{ name: 'Berkas', rows: barisBerkas(saringBerkas(R).sort((a, b) => (b.telat ?? 0) - (a.telat ?? 0))) }]);
     if (act === 'unduh-kantah') {
       const k = R.kantahMap.get(S.kantah);
