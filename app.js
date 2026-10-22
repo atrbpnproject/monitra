@@ -176,6 +176,7 @@
         <li>Data hanya dibaca oleh browser Anda. Tidak ada yang diunggah ke server.</li>
         <li>Setiap rekap tersimpan di browser ini, sehingga rekap dari tanggal berbeda bisa dibandingkan.</li>
         <li>Membuka halaman ini di browser atau komputer lain berarti data harus diimpor ulang.</li>
+        <li>Dengan ekstensi versi 1.1 ke atas, klik <b>Kirim ke Monitra</b> di panel ekstensi setelah rekap selesai. Halaman ini akan terbuka dan langsung menampilkan hasilnya.</li>
       </ol>
     </div>`;
   }
@@ -668,8 +669,16 @@
 
   // Jalur untuk ekstensi: skrip ekstensi di halaman ini mengirim hasil rekap lewat window.postMessage.
   window.addEventListener('message', async (e) => {
-    if (e.source !== window || !e.data || e.data.type !== 'REKAP_TUNGGAKAN' || !e.data.hasil) return;
+    if (e.source !== window || !e.data) return;
+    if (e.data.type === 'REKAP_TUNGGAKAN_KOSONG') {
+      toast('Data dari ekstensi tidak ditemukan atau sudah diterima sebelumnya. Klik Kirim ke Monitra lagi di panel ekstensi.', 6000);
+      history.replaceState(null, '', location.pathname + location.search);
+      return;
+    }
+    if (e.data.type !== 'REKAP_TUNGGAKAN' || !e.data.hasil) return;
     try {
+      await siap;
+      S.tab = 'ringkasan';
       await simpanRekap(D.dariEkstensi(e.data.hasil));
       toast('Rekap dari ekstensi berhasil ditampilkan.');
       window.postMessage({ type: 'REKAP_TUNGGAKAN_DITERIMA', id: e.data.id }, '*');
@@ -678,5 +687,5 @@
     }
   });
 
-  muat().then(render);
+  const siap = muat().then(render);
 })();

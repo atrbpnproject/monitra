@@ -29,17 +29,23 @@ Excel tidak disimpan di repositori ini.
 
 "Telat" dihitung dari tanggal jatuh tempo sampai tanggal rekap diambil.
 
-## Untuk ekstensi
+## Ekstensi
 
-Halaman menerima rekap langsung lewat `window.postMessage`:
+Kode ekstensi Chrome ada di folder [`ekstensi/`](ekstensi/). Mulai versi 1.1, panel ekstensi
+punya tombol **Kirim ke Monitra**:
 
-```js
-window.postMessage({ type: 'REKAP_TUNGGAKAN', id, hasil: state.hasil }, '*');
-// balasan: { type: 'REKAP_TUNGGAKAN_DITERIMA', id }
-```
+1. Ekstensi menitipkan hasil rekap di penyimpanan ekstensi, lalu membuka tab
+   `https://atrbpnproject.github.io/monitra/#ekstensi=<id>`.
+2. `ekstensi/monitra-bridge.js` berjalan di tab itu, mengambil titipan, dan mengirimnya ke halaman:
+   `window.postMessage({ type: 'REKAP_TUNGGAKAN', id, hasil }, '*')`.
+3. Halaman menyimpan rekap ke IndexedDB, membalas `{ type: 'REKAP_TUNGGAKAN_DITERIMA', id }`,
+   dan ekstensi menghapus titipannya.
 
-`hasil` sama dengan `state.hasil` di `content.js` ekstensi. File `.json` dengan isi yang sama
-juga bisa diimpor lewat tombol Impor.
+Data berpindah di dalam browser yang sama dan tidak melewati server. `hasil` sama dengan
+`state.hasil` di `ekstensi/content.js`; file `.json` dengan isi itu juga bisa diimpor lewat tombol Impor.
+
+Kalau alamat Monitra berubah, ubah `MONITRA_URL` di `ekstensi/background.js` dan pola
+`matches` untuk `monitra-bridge.js` di `ekstensi/manifest.json`.
 
 ## Berkas
 
