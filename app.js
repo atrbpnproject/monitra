@@ -372,19 +372,41 @@
       requestAnimationFrame(langkah);
     });
   }
-  function gantiTema() {
+  // Palet warna dan mode terang/gelap dari menu Tampilan. Nilai awalnya dipasang skrip di index.html.
+  const modeGelap = window.matchMedia('(prefers-color-scheme: dark)');
+  function aturTampilan({ palet, tema } = {}) {
     const root = document.documentElement;
-    const gelap = root.dataset.theme ? root.dataset.theme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-    root.classList.add('ganti-tema');
-    root.dataset.theme = gelap ? 'light' : 'dark';
-    simpanPref('tema', root.dataset.theme);
-    setTimeout(() => root.classList.remove('ganti-tema'), 500);
+    if (palet) { root.dataset.palet = palet; simpanPref('palet', palet); }
+    if (tema) simpanPref('tema', tema);
+    const t = bacaPref('tema') || 'auto';
+    const mode = t === 'dark' || (t !== 'light' && modeGelap.matches) ? 'dark' : 'light';
+    if (root.dataset.mode !== mode || palet) {
+      root.classList.add('ganti-tema');
+      setTimeout(() => root.classList.remove('ganti-tema'), 500);
+    }
+    root.dataset.mode = mode;
+    document.querySelectorAll('#menu-tampilan [data-palet]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.palet === root.dataset.palet)));
+    document.querySelectorAll('#menu-tampilan [data-tema]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.tema === t)));
   }
+  modeGelap.addEventListener('change', () => aturTampilan());
+  $('#menu-tampilan').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-palet],[data-tema]');
+    if (b) aturTampilan({ palet: b.dataset.palet, tema: b.dataset.tema });
+  });
+  document.addEventListener('click', (e) => {
+    const m = $('#menu-tampilan');
+    if (m.open && !m.contains(e.target)) m.open = false;
+  });
+  document.addEventListener('keydown', (e) => {
+    const m = $('#menu-tampilan');
+    if (e.key === 'Escape' && m.open) { m.open = false; $('summary', m).focus(); }
+  });
+  aturTampilan();
   const pendekKanwil = (n) => String(n).replace(/^Kantor Wilayah (Provinsi )?/i, '');
 
   function kosong() {
     return `<div class="empty">
-      <img class="empty-logo" src="logo.svg" alt="" width="88" height="88">
+      ${$('.brand .logo').outerHTML.replace('class="logo"', 'class="logo empty-logo"')}
       <div class="empty-kicker">Selamat datang di Monitra</div>
       <h2>Belum ada rekap</h2>
       <p class="lead">Klik <b>Rekap Sekarang</b> untuk menjalankan ekstensi Rekap Tunggakan Kanwil, atau impor file Excel hasil tombol <b>Unduh Excel</b> pada ekstensi.</p>
@@ -1071,7 +1093,6 @@
     }
     const act = el.dataset.act;
     const R = S.R;
-    if (act === 'tema') return gantiTema();
     if (act === 'rekap-sekarang') return rekapSekarang();
     if (act === 'periksa-lagi') return periksaLagi();
     if (act === 'tutup-status') { $('#status-rekap').hidden = true; return; }

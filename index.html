@@ -4,24 +4,30 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Monitra · Rekap Tunggakan SPOPP</title>
-  <meta name="theme-color" content="#0b1530">
+  <meta name="theme-color" content="#0f4c4a">
   <link rel="icon" href="logo.svg" type="image/svg+xml">
   <meta name="description" content="Dashboard berkas proses melebihi SPOPP dari hasil ekstensi Rekap Tunggakan Kanwil. Data dibaca dan disimpan di browser Anda saja.">
   <link rel="stylesheet" href="style.css">
   <script>
-    // Tema dan splash diatur sebelum halaman tergambar supaya tidak berkedip.
-    try {
-      var tema = localStorage.getItem('rt.tema');
-      if (tema === 'light' || tema === 'dark') document.documentElement.dataset.theme = tema;
-      if (sessionStorage.getItem('rt.splash')) document.documentElement.classList.add('tanpa-splash');
-    } catch (e) {}
+    // Palet, mode terang/gelap, dan splash diatur sebelum halaman tergambar supaya tidak berkedip.
+    (function () {
+      var root = document.documentElement, palet = null, tema = null;
+      try {
+        palet = localStorage.getItem('rt.palet');
+        tema = localStorage.getItem('rt.tema');
+        if (sessionStorage.getItem('rt.splash')) root.classList.add('tanpa-splash');
+      } catch (e) {}
+      root.dataset.palet = ['kadaster', 'mac', 'emas'].indexOf(palet) >= 0 ? palet : 'kadaster';
+      var gelap = tema === 'dark' || (tema !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      root.dataset.mode = gelap ? 'dark' : 'light';
+    })();
   </script>
 </head>
 <body>
   <div id="splash" class="splash" aria-hidden="true">
     <div class="splash-cahaya"></div>
     <div class="splash-isi">
-      <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="sd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1d3566"/><stop offset="1" stop-color="#0a1428"/></linearGradient><linearGradient id="se" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e3a8"/><stop offset=".5" stop-color="#d4af5f"/><stop offset="1" stop-color="#9c7630"/></linearGradient></defs><rect x="2" y="2" width="60" height="60" rx="15" fill="url(#sd)"/><rect class="logo-bingkai" x="5.5" y="5.5" width="53" height="53" rx="11.5" fill="none" stroke="url(#se)" stroke-width="1.2" opacity=".75" pathLength="1"/><path class="logo-nadi" d="M11 40h8l6-19 7 15 7-15 6 19h8" fill="none" stroke="url(#se)" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/><circle class="logo-titik" cx="53" cy="40" r="3.4" fill="#f6e3a8"/></svg>
+      <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg-splash" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="lg-1"/><stop offset="1" class="lg-2"/></linearGradient></defs><rect x="2" y="2" width="60" height="60" rx="15" fill="url(#lg-splash)"/><path class="logo-bidang" pathLength="1" d="M10 21 33 12 52 22 43 45 15 48Z"/><path class="logo-batas" d="M33 12 27 47"/><g class="logo-patok"><circle cx="10" cy="21" r="2.9"/><circle cx="33" cy="12" r="2.9"/><circle cx="52" cy="22" r="2.9"/><circle cx="15" cy="48" r="2.9"/></g><circle class="logo-jam" cx="45" cy="45" r="12.5"/><path class="logo-jarum" d="M45 38.5v7l4.5 2.8"/></svg>
       <div class="splash-nama">MONITRA</div>
       <div class="splash-sub">Rekap Tunggakan SPOPP</div>
       <div class="splash-garis"><i></i></div>
@@ -30,7 +36,7 @@
 
   <header class="top">
     <div class="brand">
-      <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="hd" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1d3566"/><stop offset="1" stop-color="#0a1428"/></linearGradient><linearGradient id="he" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e3a8"/><stop offset=".5" stop-color="#d4af5f"/><stop offset="1" stop-color="#9c7630"/></linearGradient></defs><rect x="2" y="2" width="60" height="60" rx="15" fill="url(#hd)"/><rect class="logo-bingkai" x="5.5" y="5.5" width="53" height="53" rx="11.5" fill="none" stroke="url(#he)" stroke-width="1.2" opacity=".75" pathLength="1"/><path class="logo-nadi" d="M11 40h8l6-19 7 15 7-15 6 19h8" fill="none" stroke="url(#he)" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" pathLength="1"/><circle class="logo-titik" cx="53" cy="40" r="3.4" fill="#f6e3a8"/></svg>
+      <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg-header" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="lg-1"/><stop offset="1" class="lg-2"/></linearGradient></defs><rect x="2" y="2" width="60" height="60" rx="15" fill="url(#lg-header)"/><path class="logo-bidang" pathLength="1" d="M10 21 33 12 52 22 43 45 15 48Z"/><path class="logo-batas" d="M33 12 27 47"/><g class="logo-patok"><circle cx="10" cy="21" r="2.9"/><circle cx="33" cy="12" r="2.9"/><circle cx="52" cy="22" r="2.9"/><circle cx="15" cy="48" r="2.9"/></g><circle class="logo-jam" cx="45" cy="45" r="12.5"/><path class="logo-jarum" d="M45 38.5v7l4.5 2.8"/></svg>
       <span class="brand-teks">
         <strong>Monitra <em>Rekap Tunggakan SPOPP</em></strong>
         <span id="meta" class="muted"></span>
@@ -40,7 +46,21 @@
       <select id="pilih-rekap" aria-label="Pilih rekap" hidden></select>
       <button id="rekap-sekarang" class="btn" data-act="rekap-sekarang">Rekap Sekarang</button>
       <span id="ext-label" class="sr-only" aria-live="polite"></span>
-      <button id="tema" class="btn ikon" data-act="tema" type="button" aria-label="Ganti tema terang/gelap" title="Ganti tema terang/gelap"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="bulan" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/><g class="matahari"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></g></svg></button>
+      <details id="menu-tampilan" class="menu-tampilan">
+        <summary class="btn ikon" aria-label="Tampilan: warna dan mode" title="Tampilan: warna dan mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10.5" cy="7.2" r="1.2"/><circle cx="15" cy="7.5" r="1.2"/></svg></summary>
+        <div class="menu-isi">
+          <div class="menu-judul">Warna</div>
+          <div role="radiogroup" aria-label="Warna">
+            <button type="button" class="palet-opsi" role="radio" data-palet="kadaster"><span class="contoh" style="--a:#0f766e;--b:#f59e0b"></span><span>Kadaster<small>teal tenang, mudah dibaca</small></span></button>
+            <button type="button" class="palet-opsi" role="radio" data-palet="mac"><span class="contoh" style="--a:#f5f5f7;--b:#0071e3"></span><span>macOS<small>abu-abu bersih, biru sistem</small></span></button>
+            <button type="button" class="palet-opsi" role="radio" data-palet="emas"><span class="contoh" style="--a:#13254b;--b:#d4af5f"></span><span>Emas klasik<small>biru malam dan emas</small></span></button>
+          </div>
+          <div class="menu-judul">Mode</div>
+          <div class="segmen" role="radiogroup" aria-label="Mode">
+            <button type="button" role="radio" data-tema="auto">Otomatis</button><button type="button" role="radio" data-tema="light">Terang</button><button type="button" role="radio" data-tema="dark">Gelap</button>
+          </div>
+        </div>
+      </details>
       <label class="btn primary">
         Impor Excel
         <input id="file" type="file" accept=".xlsx,.json" multiple hidden>
