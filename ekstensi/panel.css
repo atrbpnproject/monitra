@@ -1,0 +1,33 @@
+#rtk-panel {
+  position: fixed; right: 16px; bottom: 16px; z-index: 2147483000;
+  width: 440px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px);
+  display: flex; flex-direction: column;
+  background: #fff; color: #1f2933; border: 1px solid #d0d7de; border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.18); font: 13px/1.4 -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+#rtk-panel * { box-sizing: border-box; }
+#rtk-panel .rtk-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: #1f6f5c; color: #fff; border-radius: 10px 10px 0 0; }
+#rtk-panel .rtk-icon { background: transparent; border: 0; color: #fff; font-size: 18px; cursor: pointer; padding: 0 6px; }
+#rtk-panel .rtk-body { padding: 12px; overflow: auto; }
+#rtk-panel.rtk-min .rtk-body { display: none; }
+#rtk-panel .rtk-lbl { display: block; font-weight: 600; margin-bottom: 6px; }
+#rtk-panel select { width: 100%; margin-top: 4px; padding: 6px; border: 1px solid #c4cdd5; border-radius: 6px; font-weight: 400; }
+#rtk-panel .rtk-filter { margin: 4px 0 10px; }
+#rtk-panel .rtk-muted { color: #6b7785; }
+#rtk-panel .rtk-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+#rtk-panel .rtk-btn { padding: 7px 12px; border-radius: 6px; border: 1px solid #c4cdd5; background: #f6f8fa; cursor: pointer; font-weight: 600; }
+#rtk-panel .rtk-btn:disabled { opacity: .5; cursor: not-allowed; }
+#rtk-panel .rtk-primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+#rtk-panel .rtk-green { background: #1f6f5c; border-color: #1f6f5c; color: #fff; }
+#rtk-panel .rtk-web { background: #6d28d9; border-color: #6d28d9; color: #fff; }
+#rtk-panel .rtk-progress { height: 6px; background: #e5e9ee; border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+#rtk-panel #rtk-bar { height: 100%; width: 0; background: #2563eb; transition: width .3s; }
+#rtk-panel #rtk-status { margin-bottom: 10px; }
+#rtk-panel .rtk-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+#rtk-panel .rtk-table th, #rtk-panel .rtk-table td { border-bottom: 1px solid #e5e9ee; padding: 5px 4px; text-align: left; }
+#rtk-panel .rtk-table th { background: #f6f8fa; font-weight: 600; }
+#rtk-panel .rtk-table .n { text-align: right; font-variant-numeric: tabular-nums; }
+#rtk-panel .rtk-table tfoot td { font-weight: 700; border-top: 2px solid #c4cdd5; }
+#rtk-panel .rtk-warn { color: #b45309; }
+#rtk-panel .rtk-logwrap { margin-top: 10px; }
+#rtk-panel #rtk-log { max-height: 160px; overflow: auto; background: #0f172a; color: #e2e8f0; padding: 8px; border-radius: 6px; font-size: 11px; white-space: pre-wrap; }

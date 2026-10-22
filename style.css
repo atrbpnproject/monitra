@@ -188,6 +188,23 @@ tfoot td { font-weight: 600; border-top: 1px solid var(--border); }
   background: var(--text); color: var(--surface); padding: 10px 16px; border-radius: 8px; max-width: 90vw;
 }
 
+/* status rekap dari ekstensi */
+.status-rekap { background: var(--accent-soft); border-bottom: 1px solid var(--border); padding: 8px 20px; }
+.status-rekap.gagal { background: var(--warn-bg); }
+.status-rekap.gagal .status-bar { display: none; }
+.status-isi { display: flex; justify-content: space-between; align-items: center; gap: 12px; max-width: 1280px; margin: 0 auto; }
+.status-bar { height: 4px; background: var(--grid); border-radius: 2px; overflow: hidden; max-width: 1280px; margin: 6px auto 0; }
+#status-progres { height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+.btn-x { border: 0; background: none; font-size: 18px; cursor: pointer; color: var(--text-2); }
+.btn.terhubung::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
+dialog { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); max-width: 560px; width: calc(100vw - 32px); padding: 20px 24px; }
+dialog::backdrop { background: rgba(0,0,0,.35); }
+dialog ol { padding-left: 20px; }
+dialog li { margin-bottom: 6px; }
+dialog code { background: var(--grid); padding: 1px 5px; border-radius: 4px; }
+.small-btn { padding: 2px 8px; font-size: 12px; margin-left: 4px; }
+a.btn { text-decoration: none; }
+
 @media (max-width: 640px) {
   main { padding: 16px; }
   .top { padding: 10px 16px; }

@@ -1,0 +1,59 @@
+REKAP TUNGGAKAN KANWIL — Ekstensi Chrome
+=========================================
+
+Fungsi
+------
+Merekap otomatis data dashboard "Kinerja Kantor Pertanahan" untuk satu Kanwil
+(default: Kanwil NTB), mengikuti alur klik manual:
+  Rekap Kanwil -> Kanwil NTB -> setiap Kantah -> setiap layanan yang
+  "Berkas Proses Melebihi SPOPP" > 0 -> daftar berkas tunggakannya.
+Hasil tampil di panel dan bisa diunduh sebagai Excel.
+
+Cara memasang (sekali saja)
+---------------------------
+1. Ekstrak file ZIP ini ke sebuah folder (mis. Documents\rekap-tunggakan-ntb).
+2. Di Chrome buka:  chrome://extensions
+3. Aktifkan "Developer mode" (pojok kanan atas).
+4. Klik "Load unpacked" lalu pilih folder hasil ekstrak tadi.
+
+Cara memakai
+------------
+1. Login seperti biasa, buka:
+   https://aplikasi.atrbpn.go.id/dashboard/statistik/KinerjaKantorPertanahan
+2. Panel "Rekap Tunggakan Kanwil" muncul di kanan bawah
+   (kalau ditutup, klik ikon ekstensi untuk memunculkannya lagi).
+3. Pastikan Kanwil = "Kantor Wilayah Provinsi Nusa Tenggara Barat".
+   Filter Tahun/Bulan mengikuti pilihan di halaman (default Semua Tahun / Semua Bulan).
+4. Klik "Mulai Rekap". Tunggu sampai status "Selesai".
+5. Klik "Unduh Excel", atau klik "Kirim ke Monitra" untuk langsung membuka
+   hasilnya di web https://atrbpnproject.github.io/monitra/
+
+Bisa juga dimulai dari web Monitra: klik "Rekap Sekarang". Ekstensi membuka
+dashboard, merekap, lalu menampilkan hasilnya kembali di tab Monitra.
+
+Isi file Excel
+--------------
+- Ringkasan Kantah   : tabel seperti rekap Kanwil + jumlah layanan bertunggakan
+                       dan jumlah berkas yang berhasil diambil.
+- Layanan Tunggakan  : semua layanan yang Proses Melebihi SPOPP > 0, per kantah.
+- Detail Berkas      : seluruh berkas tunggakan satu Kanwil (nomor/tahun berkas,
+                       posisi berkas digital, status, tanggal mulai, durasi, jatuh tempo).
+- Satu sheet per kantah (detail berkas kantah tersebut).
+- Info               : filter dan waktu pengambilan data.
+
+Catatan
+-------
+- Ekstensi memakai sesi login Anda; tidak ada data yang dikirim ke server lain.
+  Tombol "Kirim ke Monitra" hanya memindahkan hasil rekap ke tab Monitra di
+  browser yang sama. Monitra menyimpannya di browser itu saja.
+- Ada jeda kecil antar permintaan supaya server tidak terbebani. Seluruh NTB
+  (10 kantah) biasanya selesai dalam beberapa menit.
+- Kolom "Berkas" di panel berwarna oranye bila jumlah berkas yang terambil
+  berbeda dari angka rekap (bisa karena data berubah saat proses berjalan).
+- Jika muncul "Respon bukan JSON", kemungkinan sesi login habis: login ulang
+  lalu klik Mulai Rekap lagi.
+
+Memperbarui dari versi sebelumnya
+---------------------------------
+Ganti isi folder ekstensi lama dengan isi ZIP baru, lalu di chrome://extensions
+klik tombol muat ulang (ikon panah melingkar) pada kartu ekstensi ini.

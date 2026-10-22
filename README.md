@@ -29,17 +29,40 @@ Excel tidak disimpan di repositori ini.
 
 "Telat" dihitung dari tanggal jatuh tempo sampai tanggal rekap diambil.
 
-## Untuk ekstensi
+## Ekstensi
 
-Halaman menerima rekap langsung lewat `window.postMessage`:
+Kode ekstensi Chrome ada di folder [`ekstensi/`](ekstensi/). ZIP siap pasang ada di
+[`unduh/rekap-tunggakan-kanwil.zip`](unduh/rekap-tunggakan-kanwil.zip) dan bisa diunduh dari
+tombol **Rekap Sekarang** bila ekstensi belum terpasang. Setiap kali isi `ekstensi/` berubah,
+jalankan `./buat-zip-ekstensi.sh` lalu commit ZIP-nya.
 
-```js
-window.postMessage({ type: 'REKAP_TUNGGAKAN', id, hasil: state.hasil }, '*');
-// balasan: { type: 'REKAP_TUNGGAKAN_DITERIMA', id }
-```
+### Rekap Sekarang (dari Monitra)
 
-`hasil` sama dengan `state.hasil` di `content.js` ekstensi. File `.json` dengan isi yang sama
-juga bisa diimpor lewat tombol Impor.
+1. `ekstensi/monitra-bridge.js` berjalan di halaman Monitra dan mengumumkan
+   `{ type: 'REKAP_EKSTENSI_ADA', versi }`. Tanpa pengumuman itu, tombol membuka panduan pemasangan.
+2. Tombol mengirim `{ type: 'REKAP_MINTA', kanwil }`. Background mencatat permintaan, lalu membuka
+   atau mengaktifkan tab dashboard Kinerja Kantor Pertanahan. Tab itu dibuat aktif karena Chrome
+   memperlambat timer di tab latar belakang.
+3. Panel ekstensi menjalankan rekap untuk kanwil yang sama dengan rekap aktif di Monitra
+   (atau Kanwil NTB bila belum ada). Progresnya diteruskan sebagai `REKAP_STATUS`.
+4. Bila daftar kanwil gagal dimuat karena belum login, permintaan ditahan sampai 30 menit dan
+   rekap berjalan sendiri setelah halaman dashboard dimuat ulang dalam keadaan login.
+5. Setelah selesai, hasil dikirim kembali ke tab Monitra yang meminta (lihat di bawah) dan tab itu diaktifkan.
+
+### Kirim ke Monitra (dari panel ekstensi)
+
+1. Ekstensi menitipkan hasil rekap di penyimpanan ekstensi lalu membuka tab
+   `https://atrbpnproject.github.io/monitra/#ekstensi=<id>`, atau memberi tahu tab Monitra yang meminta.
+2. `monitra-bridge.js` mengambil titipan dan mengirimnya ke halaman:
+   `window.postMessage({ type: 'REKAP_TUNGGAKAN', id, hasil }, '*')`.
+3. Halaman menyimpan rekap ke IndexedDB, membalas `{ type: 'REKAP_TUNGGAKAN_DITERIMA', id }`,
+   dan ekstensi menghapus titipannya.
+
+Data berpindah di dalam browser yang sama dan tidak melewati server. `hasil` sama dengan
+`state.hasil` di `ekstensi/content.js`; file `.json` dengan isi itu juga bisa diimpor lewat tombol Impor.
+
+Kalau alamat Monitra berubah, ubah `MONITRA_URL` di `ekstensi/background.js` dan pola
+`matches` untuk `monitra-bridge.js` di `ekstensi/manifest.json`.
 
 ## Berkas
 
