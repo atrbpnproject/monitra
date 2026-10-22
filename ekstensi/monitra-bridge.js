@@ -1,18 +1,28 @@
 // Berjalan di halaman Monitra. Menghubungkan halaman dengan ekstensi lewat window.postMessage:
 // - mengumumkan bahwa ekstensi terpasang (REKAP_EKSTENSI_ADA),
 // - meneruskan tombol "Rekap Sekarang" (REKAP_MINTA) dan status rekap (REKAP_STATUS),
-// - menyerahkan hasil rekap yang dititipkan ekstensi (REKAP_TUNGGAKAN).
+// - menyerahkan hasil rekap yang dititipkan ekstensi (REKAP_TUNGGAKAN), termasuk hasil rekap terjadwal
+//   yang menunggu sampai Monitra dibuka.
 (function () {
   const VERSI = chrome.runtime.getManifest().version;
   const kirimKeHalaman = (data) => window.postMessage(data, '*');
   const umumkan = () => kirimKeHalaman({ type: 'REKAP_EKSTENSI_ADA', versi: VERSI });
   const putus = () => kirimKeHalaman({ type: 'REKAP_STATUS', tahap: 'gagal', pesan: 'Ekstensi baru saja dimuat ulang. Muat ulang halaman ini lalu coba lagi.' });
 
-  async function serahkan(id) {
+  const diserahkan = new Set();
+  async function serahkan(id, diam) {
+    if (diserahkan.has(id)) return;
+    diserahkan.add(id);
     let r;
     try { r = await chrome.runtime.sendMessage({ type: 'AMBIL_REKAP', id }); } catch (e) { putus(); return; }
-    if (!r || !r.hasil) kirimKeHalaman({ type: 'REKAP_TUNGGAKAN_KOSONG', id });
-    else kirimKeHalaman({ type: 'REKAP_TUNGGAKAN', id, hasil: r.hasil });
+    if (!r || !r.hasil) { if (!diam) kirimKeHalaman({ type: 'REKAP_TUNGGAKAN_KOSONG', id }); }
+    else kirimKeHalaman({ type: 'REKAP_TUNGGAKAN', id, hasil: r.hasil, terjadwal: r.terjadwal });
+  }
+  // Hasil rekap terjadwal yang belum diambil.
+  async function ambilTertunda() {
+    let r;
+    try { r = await chrome.runtime.sendMessage({ type: 'TITIPAN_TERTUNDA' }); } catch (e) { return; }
+    for (const id of (r && r.ids) || []) await serahkan(id, true);
   }
 
   window.addEventListener('message', async (e) => {
@@ -31,7 +41,7 @@
     }
     if (d.type === 'REKAP_TUNGGAKAN_DITERIMA' && d.id) {
       chrome.runtime.sendMessage({ type: 'REKAP_DITERIMA', id: d.id }).catch(() => {});
-      if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+      if (/ekstensi=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
     }
   });
 
@@ -44,4 +54,6 @@
   umumkan();
   const h = /ekstensi=([\w-]+)/.exec(location.hash);
   if (h) serahkan(h[1]);
+  ambilTertunda();
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') ambilTertunda(); });
 })();

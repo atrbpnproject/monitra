@@ -15,7 +15,8 @@
     </div>
     <div class="top-actions">
       <select id="pilih-rekap" aria-label="Pilih rekap" hidden></select>
-      <button id="rekap-sekarang" class="btn" data-act="rekap-sekarang" title="Jalankan ekstensi Rekap Tunggakan Kanwil">Rekap Sekarang</button>
+      <button id="rekap-sekarang" class="btn" data-act="rekap-sekarang">Rekap Sekarang</button>
+      <span id="ext-label" class="sr-only" aria-live="polite"></span>
       <label class="btn primary">
         Impor Excel
         <input id="file" type="file" accept=".xlsx,.json" multiple hidden>
@@ -23,41 +24,57 @@
     </div>
   </header>
 
-  <nav id="tabs" class="tabs" hidden>
-    <button data-tab="ringkasan">Ringkasan</button>
-    <button data-tab="kantah">Kantah</button>
-    <button data-tab="layanan">Layanan</button>
-    <button data-tab="posisi">Posisi Berkas</button>
-    <button data-tab="berkas">Daftar Berkas</button>
-    <button data-tab="riwayat">Riwayat &amp; Perbandingan</button>
+  <nav id="tabs" class="tabs" role="tablist" aria-label="Bagian" hidden>
+    <button role="tab" data-tab="ringkasan">Ringkasan</button>
+    <button role="tab" data-tab="kantah">Kantah</button>
+    <button role="tab" data-tab="layanan">Layanan</button>
+    <button role="tab" data-tab="posisi">Posisi Berkas</button>
+    <button role="tab" data-tab="berkas">Daftar Berkas</button>
+    <button role="tab" data-tab="riwayat">Riwayat &amp; Perbandingan</button>
   </nav>
 
-  <div id="status-rekap" class="status-rekap" hidden>
-    <div class="status-isi"><span id="status-teks"></span><button class="btn-x" data-act="tutup-status" aria-label="Tutup">×</button></div>
+  <div id="pita-versi" class="pita" hidden>
+    <div class="status-isi"><span id="pita-versi-teks"></span>
+      <span class="pita-aksi"><a class="btn small-btn" href="unduh/rekap-tunggakan-kanwil.zip" download>Unduh pembaruan</a><button class="btn small-btn" data-act="cara-perbarui">Cara memperbarui</button><button class="btn-x" data-act="tutup-versi" aria-label="Tutup pemberitahuan">×</button></span></div>
+  </div>
+
+  <div id="status-rekap" class="status-rekap" role="status" hidden>
+    <div class="status-isi"><span id="status-teks"></span><span class="pita-aksi"><button id="status-ulang" class="btn small-btn" data-act="rekap-sekarang" hidden>Coba lagi</button><button class="btn-x" data-act="tutup-status" aria-label="Tutup">×</button></span></div>
     <div class="status-bar"><div id="status-progres"></div></div>
   </div>
 
   <main id="main"></main>
 
   <dialog id="dlg-ekstensi">
-    <h2>Ekstensi belum terpasang</h2>
-    <p class="muted">Rekap Sekarang membutuhkan ekstensi Chrome <b>Rekap Tunggakan Kanwil</b> versi 1.2.0 atau lebih baru. Ekstensi itu tidak ditemukan di browser ini: belum terpasang, sedang nonaktif, atau versinya masih lama.</p>
-    <p><b>Unduhan <code>rekap-tunggakan-kanwil.zip</code> sudah dimulai.</b> Kalau belum muncul, <a href="unduh/rekap-tunggakan-kanwil.zip" download>klik di sini untuk mengunduh lagi</a>.</p>
-    <h3>Cara memasang</h3>
-    <ol>
-      <li>Ekstrak ZIP ke folder tetap, misalnya <code>Documents\rekap-tunggakan-kanwil</code>. Jangan hapus folder ini setelah dipasang.</li>
-      <li>Buka alamat <code>chrome://extensions</code> di tab baru <button class="btn small-btn" data-act="salin-ext">Salin alamat</button></li>
-      <li>Aktifkan <b>Developer mode</b> di pojok kanan atas.</li>
-      <li>Klik <b>Load unpacked</b>, lalu pilih folder hasil ekstrak.</li>
-      <li>Kembali ke halaman ini dan muat ulang (F5).</li>
-    </ol>
-    <p class="muted small">Sudah terpasang versi lama? Ganti isi foldernya dengan isi ZIP baru, lalu klik ikon muat ulang pada kartu ekstensi di <code>chrome://extensions</code>. Kalau ekstensi sedang nonaktif, nyalakan tombolnya di kartu ekstensi.</p>
+    <div data-mode="pasang">
+      <h2>Ekstensi belum terdeteksi</h2>
+      <p class="muted">Rekap Sekarang membutuhkan ekstensi Chrome <b>Rekap Tunggakan Kanwil</b> versi 1.2.0 atau lebih baru. Ekstensi itu tidak menjawab di halaman ini. Kemungkinannya: belum terpasang, sedang nonaktif, versinya masih lama, atau baru saja dimuat ulang sehingga halaman ini perlu dimuat ulang (F5).</p>
+      <p class="tombol-baris"><a class="btn primary" href="unduh/rekap-tunggakan-kanwil.zip" download>Unduh ekstensi (ZIP)</a><button class="btn" data-act="periksa-lagi">Periksa lagi</button></p>
+      <h3>Cara memasang</h3>
+      <ol>
+        <li>Ekstrak ZIP ke folder tetap, misalnya <code>Documents\rekap-tunggakan-kanwil</code>. Jangan hapus folder ini setelah dipasang.</li>
+        <li>Buka alamat <code>chrome://extensions</code> di tab baru <button class="btn small-btn" data-act="salin-ext">Salin alamat</button></li>
+        <li>Aktifkan <b>Developer mode</b> di pojok kanan atas.</li>
+        <li>Klik <b>Load unpacked</b>, lalu pilih folder hasil ekstrak.</li>
+        <li>Kembali ke halaman ini, muat ulang (F5), lalu klik Rekap Sekarang.</li>
+      </ol>
+      <p class="muted small">Sudah terpasang tetapi nonaktif? Nyalakan tombolnya di kartu ekstensi pada <code>chrome://extensions</code>, lalu muat ulang halaman ini.</p>
+    </div>
+    <div data-mode="perbarui" hidden>
+      <h2>Memperbarui ekstensi</h2>
+      <p class="tombol-baris"><a class="btn primary" href="unduh/rekap-tunggakan-kanwil.zip" download>Unduh versi terbaru (ZIP)</a></p>
+      <ol>
+        <li>Ekstrak ZIP, lalu salin isinya ke folder ekstensi lama (timpa semua file). Lokasi folder lama terlihat di kartu ekstensi pada <code>chrome://extensions</code>.</li>
+        <li>Buka <code>chrome://extensions</code> <button class="btn small-btn" data-act="salin-ext">Salin alamat</button> lalu klik ikon muat ulang (panah melingkar) di kartu <b>Rekap Tunggakan Kanwil</b>.</li>
+        <li>Muat ulang halaman ini dan halaman dashboard ATR/BPN yang sedang terbuka.</li>
+      </ol>
+    </div>
     <form method="dialog"><button class="btn">Tutup</button></form>
   </dialog>
 
   <div id="drop" class="drop-overlay" hidden><div>Lepaskan file Excel di sini</div></div>
   <div id="tip" class="tip" hidden></div>
-  <div id="toast" class="toast" hidden></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
   <script src="xlsx-writer.js"></script>
   <script src="data.js"></script>

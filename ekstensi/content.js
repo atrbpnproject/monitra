@@ -58,6 +58,15 @@
     const p = (x) => String(x).padStart(2, '0');
     return `${p(d.getDate())}-${p(d.getMonth() + 1)}-${d.getFullYear()}`;
   }
+  // Pesan galat teknis diterjemahkan menjadi langkah yang bisa dilakukan pengguna.
+  function pesanRamah(msg) {
+    const m = String(msg || '');
+    if (/bukan JSON/i.test(m)) return 'Sesi login ATR/BPN habis. Login ulang di tab ini, lalu jalankan rekap lagi.';
+    if (/HTTP 5\d\d/.test(m)) return 'Server ATR/BPN sedang bermasalah (' + m + '). Coba lagi beberapa menit lagi.';
+    if (/HTTP 40[13]/.test(m)) return 'Akses ditolak server ATR/BPN (' + m + '). Pastikan masih login.';
+    if (/Failed to fetch|NetworkError/i.test(m)) return 'Koneksi internet terputus. Periksa jaringan lalu coba lagi.';
+    return m;
+  }
   function esc(s) {
     return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   }
@@ -125,6 +134,7 @@
       </span>
     </div>
     <div class="rtk-body">
+      <div id="rtk-pita" class="rtk-pita" hidden></div>
       <label class="rtk-lbl">Kanwil
         <select id="rtk-kanwil"><option>Memuat daftar kanwil…</option></select>
       </label>
@@ -132,12 +142,17 @@
       <div class="rtk-row">
         <button id="rtk-start" class="rtk-btn rtk-primary">Mulai Rekap</button>
         <button id="rtk-stop" class="rtk-btn" disabled>Berhenti</button>
-        <button id="rtk-xlsx" class="rtk-btn rtk-green" disabled>Unduh Excel</button>
-        <button id="rtk-web" class="rtk-btn rtk-web" disabled title="Buka hasil rekap di web Monitra (data tetap di browser ini)">Kirim ke Monitra</button>
+        <button id="rtk-web" class="rtk-btn" disabled title="Buka hasil rekap di web Monitra (data tetap di browser ini)">Buka di Monitra</button>
+        <button id="rtk-xlsx" class="rtk-btn" disabled>Unduh Excel</button>
+        <button id="rtk-retry" class="rtk-btn" hidden title="Ambil ulang hanya kantah dan layanan yang gagal">Ulangi yang gagal</button>
       </div>
       <div class="rtk-progress"><div id="rtk-bar"></div></div>
       <div id="rtk-status" class="rtk-muted">Siap.</div>
       <div id="rtk-summary"></div>
+      <details class="rtk-logwrap" id="rtk-jadwal-wrap"><summary>Rekap otomatis terjadwal</summary>
+        <label class="rtk-cek"><input type="checkbox" id="rtk-jadwal-on"> Rekap otomatis setiap hari kerja pukul <input type="time" id="rtk-jam" value="07:30"></label>
+        <div id="rtk-jadwal-info" class="rtk-muted">Chrome harus terbuka dan Anda sudah login ATR/BPN. Tab dashboard akan dibuka otomatis; hasilnya tampil saat Monitra dibuka.</div>
+      </details>
       <details class="rtk-logwrap"><summary>Log proses</summary><pre id="rtk-log"></pre></details>
     </div>`;
   document.body.appendChild(panel);
@@ -146,13 +161,37 @@
   const ui = {
     kanwil: $('rtk-kanwil'), filter: $('rtk-filter'), start: $('rtk-start'), stop: $('rtk-stop'),
     xlsx: $('rtk-xlsx'), web: $('rtk-web'), bar: $('rtk-bar'), status: $('rtk-status'), summary: $('rtk-summary'), log: $('rtk-log'),
+    retry: $('rtk-retry'), pita: $('rtk-pita'), jadwalOn: $('rtk-jadwal-on'), jam: $('rtk-jam'), jadwalInfo: $('rtk-jadwal-info'),
   };
+  // Satu tombol utama sesuai tahap: Mulai Rekap sebelum ada hasil, Buka di Monitra sesudahnya.
+  function aturTombol() {
+    const ada = !!(state.hasil && state.hasil.kantah.length) && !state.running;
+    ui.start.classList.toggle('rtk-primary', !ada);
+    ui.web.classList.toggle('rtk-primary', ada);
+    ui.start.textContent = ada ? 'Rekap ulang' : 'Mulai Rekap';
+    ui.retry.hidden = !(ada && jumlahGagal() > 0);
+    if (!ui.retry.hidden) ui.retry.textContent = `Ulangi yang gagal (${jumlahGagal()})`;
+  }
+  function jumlahGagal() {
+    const h = state.hasil;
+    if (!h) return 0;
+    return h.kantah.reduce((n, k) => n + (k.error ? 1 : 0) + k.layanan.filter((l) => l.error).length, 0);
+  }
+  function pita(teks) {
+    ui.pita.textContent = teks || '';
+    ui.pita.hidden = !teks;
+  }
   function log(msg) {
     const t = new Date().toLocaleTimeString('id-ID');
     ui.log.textContent += `[${t}] ${msg}\n`;
     ui.log.scrollTop = ui.log.scrollHeight;
   }
   function setStatus(msg, pct) {
+    // Perkiraan sisa waktu dari kecepatan sejauh ini.
+    if (state.running && state.mulai && pct > 3 && pct < 100) {
+      const sisa = (Date.now() - state.mulai) * (100 - pct) / pct;
+      msg += sisa < 60000 ? ' · kurang dari 1 menit lagi' : ` · sekitar ${Math.round(sisa / 60000)} menit lagi`;
+    }
     ui.status.textContent = msg;
     if (pct !== undefined) ui.bar.style.width = Math.max(0, Math.min(100, pct)) + '%';
     if (state.tugas) laporTugas('proses', msg, pct);
@@ -168,7 +207,12 @@
   });
   refreshFilter();
 
-  panel.querySelector('[data-act="min"]').onclick = () => panel.classList.toggle('rtk-min');
+  // Panel diingat dalam keadaan diperkecil atau tidak, supaya tidak selalu menutupi dashboard.
+  chrome.storage.local.get('panelMin').then((o) => { if (o.panelMin && !state.running && !state.tugas) panel.classList.add('rtk-min'); }).catch(() => {});
+  panel.querySelector('[data-act="min"]').onclick = () => {
+    panel.classList.toggle('rtk-min');
+    chrome.storage.local.set({ panelMin: panel.classList.contains('rtk-min') }).catch(() => {});
+  };
   panel.querySelector('[data-act="close"]').onclick = () => (panel.style.display = 'none');
   chrome.runtime.onMessage.addListener((m, _sender, reply) => {
     if (m && m.type === 'TOGGLE_PANEL') panel.style.display = panel.style.display === 'none' ? '' : 'none';
@@ -186,6 +230,7 @@
       if (pilih) ui.kanwil.value = pilih.kanwilid;
     } catch (e) {
       ui.kanwil.innerHTML = '<option value="">Gagal memuat — pastikan sudah login</option>';
+      ui.status.textContent = pesanRamah(e.message);
       log('Gagal memuat daftar kanwil: ' + e.message);
     }
   }
@@ -208,7 +253,10 @@
     panel.classList.remove('rtk-min');
     state.tugas = t;
     chrome.runtime.sendMessage({ type: 'TUGAS_DIMULAI' }).catch(() => {});
-    log('Rekap diminta dari Monitra.');
+    pita(t.terjadwal
+      ? 'Rekap terjadwal sedang berjalan. Biarkan tab ini terbuka; hasilnya tampil saat Monitra dibuka.'
+      : 'Rekap untuk Monitra sedang berjalan. Biarkan tab ini terbuka; hasilnya otomatis tampil di tab Monitra.');
+    log(t.terjadwal ? 'Rekap terjadwal dimulai.' : 'Rekap diminta dari Monitra.');
     jalankan();
   }
   cekTugas();
@@ -218,18 +266,19 @@
     const kanwilid = ui.kanwil.value;
     const kanwil = state.kanwilList.find((k) => String(k.kanwilid) === kanwilid);
     if (!kanwil) {
-      if (state.tugas) { laporTugas('gagal', 'Kanwil belum dipilih di panel ekstensi.'); state.tugas = null; return; }
-      alert('Pilih Kanwil terlebih dahulu.');
+      if (state.tugas) { laporTugas('gagal', 'Kanwil belum dipilih di panel ekstensi.'); state.tugas = null; pita(''); return; }
+      ui.status.textContent = 'Pilih Kanwil terlebih dahulu. Bila daftar kosong, login dulu lalu muat ulang halaman ini.';
       return;
     }
     const f = filterHalaman();
 
-    state.running = true; state.stop = false;
+    state.running = true; state.stop = false; state.mulai = Date.now();
     ui.start.disabled = true; ui.stop.disabled = false; ui.xlsx.disabled = true; ui.web.disabled = true; ui.kanwil.disabled = true;
     ui.log.textContent = '';
-    const hasil = { kanwil, filter: f.label, waktu: new Date(), kantah: [] };
+    const hasil = { kanwil, filter: f.label, waktu: new Date(), kantah: [], f: { tahun: f.tahun, bulan: f.bulan } };
     state.hasil = hasil;
     renderSummary();
+    aturTombol();
     let gagal = null;
 
     try {
@@ -282,18 +331,21 @@
       log(state.stop ? 'Dihentikan oleh pengguna.' : 'Selesai.');
     } catch (e) {
       gagal = e.message;
-      setStatus('Gagal: ' + e.message);
+      setStatus('Gagal: ' + pesanRamah(e.message));
       log('Gagal: ' + e.message);
     } finally {
       state.running = false;
       ui.start.disabled = false; ui.stop.disabled = true; ui.kanwil.disabled = false;
       ui.xlsx.disabled = ui.web.disabled = !(hasil.kantah.length);
       renderSummary();
+      aturTombol();
+      if (!gagal && jumlahGagal()) setStatus(`${ui.status.textContent} ${jumlahGagal()} bagian gagal diambil; klik Ulangi yang gagal.`);
       if (state.tugas) {
         const tugas = state.tugas;
         state.tugas = null;
+        pita('');
         if (!gagal && !state.stop && hasil.kantah.length) kirimKeMonitra(tugas);
-        else laporTugas('gagal', gagal ? `Rekap gagal: ${gagal}. Login ulang di tab dashboard ATR/BPN bila diminta, lalu klik Rekap Sekarang lagi.` : 'Rekap dihentikan di panel ekstensi.');
+        else laporTugas('gagal', gagal ? `Rekap gagal: ${pesanRamah(gagal)}` : 'Rekap dihentikan di panel ekstensi.');
       }
     }
   }
@@ -404,12 +456,13 @@
   async function kirimKeMonitra(tugas) {
     if (!state.hasil || state.running) return;
     const dariTugas = !!(tugas && tugas.monitraTab);
+    const terjadwal = !!(tugas && tugas.terjadwal);
     ui.web.disabled = true;
     setStatus('Mengirim hasil rekap ke Monitra…');
     try {
-      const r = await chrome.runtime.sendMessage({ type: 'KIRIM_MONITRA', hasil: JSON.parse(JSON.stringify(state.hasil)), tujuan: dariTugas ? tugas.monitraTab : null });
+      const r = await chrome.runtime.sendMessage({ type: 'KIRIM_MONITRA', hasil: JSON.parse(JSON.stringify(state.hasil)), tujuan: dariTugas ? tugas.monitraTab : null, terjadwal });
       if (!r || !r.ok) throw new Error((r && r.error) || 'tidak ada balasan dari ekstensi');
-      setStatus(r.tabBaru ? 'Monitra dibuka di tab baru.' : 'Hasil rekap sudah tampil di tab Monitra.');
+      setStatus(r.tertunda ? 'Rekap terjadwal selesai dan disimpan. Hasilnya tampil saat Monitra dibuka.' : r.tabBaru ? 'Monitra dibuka di tab baru.' : 'Hasil rekap sudah tampil di tab Monitra.');
       log('Hasil rekap dikirim ke Monitra.');
     } catch (e) {
       setStatus('Gagal mengirim ke Monitra: ' + e.message);
@@ -420,6 +473,76 @@
     }
   }
 
+  // Ambil ulang hanya kantah dan layanan yang gagal, dengan filter yang sama seperti rekapnya.
+  async function ulangiGagal() {
+    const h = state.hasil;
+    if (!h || state.running) return;
+    const f = h.f || filterHalaman();
+    state.running = true; state.stop = false; state.mulai = Date.now();
+    ui.start.disabled = ui.xlsx.disabled = ui.web.disabled = ui.retry.disabled = true; ui.stop.disabled = false;
+    const tugasList = [];
+    h.kantah.forEach((k) => {
+      if (k.error) tugasList.push({ k });
+      k.layanan.forEach((l) => { if (l.error) tugasList.push({ k, l }); });
+    });
+    let i = 0;
+    for (const t of tugasList) {
+      if (state.stop) break;
+      i++;
+      setStatus(`Mengulang ${i}/${tugasList.length}: ${t.k.info.namakantah}${t.l ? ' — ' + t.l.info.namaprosedur : ''}`, (i - 1) / tugasList.length * 100);
+      try {
+        await sleep(JEDA_MS);
+        if (t.l) {
+          t.l.detail = await api.detail(f, t.l.info.namaprosedur, t.k.info.kantorid);
+          t.l.error = null;
+          log(`  ↻ ${t.k.info.namakantah} · ${t.l.info.namaprosedur}: ${t.l.detail.length} berkas`);
+        } else {
+          const prosedur = await api.prosedur(f, t.k.info.kantorid);
+          t.k.layanan = [];
+          for (const p of prosedur.filter((x) => toNum(x.prosesmelebihiprosedur) > 0)) {
+            const lay = { info: p, detail: [], error: null };
+            t.k.layanan.push(lay);
+            try { await sleep(JEDA_MS); lay.detail = await api.detail(f, p.namaprosedur, t.k.info.kantorid); } catch (e) { lay.error = e.message; }
+          }
+          t.k.error = null;
+          log(`  ↻ ${t.k.info.namakantah}: ${t.k.layanan.length} layanan diambil ulang`);
+        }
+      } catch (e) {
+        if (t.l) t.l.error = e.message; else t.k.error = e.message;
+        log(`  ✗ ulang ${t.k.info.namakantah}${t.l ? ' · ' + t.l.info.namaprosedur : ''}: ${e.message}`);
+      }
+      renderSummary();
+    }
+    state.running = false;
+    ui.start.disabled = ui.xlsx.disabled = ui.web.disabled = ui.retry.disabled = false; ui.stop.disabled = true;
+    const sisa = jumlahGagal();
+    setStatus(sisa ? `${sisa} bagian masih gagal. ${pesanRamah(h.kantah.flatMap((k) => [k.error, ...k.layanan.map((l) => l.error)]).find(Boolean))}` : 'Semua bagian yang gagal berhasil diambil ulang. Klik Buka di Monitra untuk memperbarui rekap di Monitra.', 100);
+    aturTombol();
+  }
+
+  // ---------- rekap terjadwal ----------
+  function infoJadwal(berikut) {
+    ui.jadwalInfo.textContent = ui.jadwalOn.checked && berikut
+      ? `Rekap berikutnya: ${new Date(berikut).toLocaleString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })} (Sabtu dan Minggu dilewati). Chrome harus terbuka dan sesi login ATR/BPN masih aktif.`
+      : 'Chrome harus terbuka dan Anda sudah login ATR/BPN. Tab dashboard akan dibuka otomatis; hasilnya tampil saat Monitra dibuka.';
+  }
+  chrome.runtime.sendMessage({ type: 'AMBIL_JADWAL' }).then((r) => {
+    if (!r || !r.jadwal) return;
+    ui.jadwalOn.checked = !!r.jadwal.aktif;
+    if (r.jadwal.jam) ui.jam.value = r.jadwal.jam;
+    infoJadwal(r.berikut);
+  }).catch(() => {});
+  async function simpanJadwal() {
+    const k = state.kanwilList.find((x) => String(x.kanwilid) === ui.kanwil.value);
+    const jadwal = { aktif: ui.jadwalOn.checked, jam: ui.jam.value || '07:30', kanwil: k ? k.namakanwil : '' };
+    const r = await chrome.runtime.sendMessage({ type: 'ATUR_JADWAL', jadwal }).catch(() => null);
+    infoJadwal(r && r.berikut);
+  }
+  ui.jadwalOn.onchange = simpanJadwal;
+  ui.jam.onchange = () => { if (ui.jadwalOn.checked) simpanJadwal(); };
+  ui.kanwil.addEventListener('change', () => { if (ui.jadwalOn.checked) simpanJadwal(); });
+
+  ui.retry.onclick = ulangiGagal;
   ui.start.onclick = () => { if (!state.running) jalankan(); };
   ui.stop.onclick = () => { state.stop = true; setStatus('Menghentikan setelah permintaan saat ini…'); };
   ui.xlsx.onclick = unduh;

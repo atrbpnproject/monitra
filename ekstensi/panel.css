@@ -18,8 +18,6 @@
 #rtk-panel .rtk-btn { padding: 7px 12px; border-radius: 6px; border: 1px solid #c4cdd5; background: #f6f8fa; cursor: pointer; font-weight: 600; }
 #rtk-panel .rtk-btn:disabled { opacity: .5; cursor: not-allowed; }
 #rtk-panel .rtk-primary { background: #2563eb; border-color: #2563eb; color: #fff; }
-#rtk-panel .rtk-green { background: #1f6f5c; border-color: #1f6f5c; color: #fff; }
-#rtk-panel .rtk-web { background: #6d28d9; border-color: #6d28d9; color: #fff; }
 #rtk-panel .rtk-progress { height: 6px; background: #e5e9ee; border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
 #rtk-panel #rtk-bar { height: 100%; width: 0; background: #2563eb; transition: width .3s; }
 #rtk-panel #rtk-status { margin-bottom: 10px; }
@@ -31,3 +29,8 @@
 #rtk-panel .rtk-warn { color: #b45309; }
 #rtk-panel .rtk-logwrap { margin-top: 10px; }
 #rtk-panel #rtk-log { max-height: 160px; overflow: auto; background: #0f172a; color: #e2e8f0; padding: 8px; border-radius: 6px; font-size: 11px; white-space: pre-wrap; }
+#rtk-panel .rtk-pita { background: #fff4e0; border: 1px solid #f0c27a; color: #7a4a00; border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; font-weight: 600; }
+#rtk-panel .rtk-cek { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 8px 0 4px; }
+#rtk-panel .rtk-cek input[type="time"] { padding: 3px 6px; border: 1px solid #c4cdd5; border-radius: 6px; font: inherit; }
+#rtk-panel summary { cursor: pointer; color: #3b4652; }
+#rtk-panel .rtk-btn:focus-visible, #rtk-panel .rtk-icon:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }

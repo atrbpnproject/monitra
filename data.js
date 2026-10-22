@@ -238,14 +238,89 @@
     };
   }
 
+  // Periksa dan rapikan rekap berformat Monitra (file .json atau cadangan) sebelum disimpan,
+  // supaya file yang tidak lengkap ditolak dengan pesan jelas, bukan membuat halaman gagal dibuka.
+  function periksa(r) {
+    if (!r || typeof r !== 'object') throw new Error('Isi file bukan rekap tunggakan.');
+    const kurang = ['kanwil', 'kantah', 'berkas'].filter((k) => r[k] === undefined || r[k] === null);
+    if (kurang.length) throw new Error('Bagian wajib tidak ada di file: ' + kurang.join(', ') + '.');
+    if (!Array.isArray(r.kantah) || !Array.isArray(r.berkas)) throw new Error('Bagian kantah dan berkas harus berupa daftar.');
+    const teksAtau = (v, d = '') => (v === null || v === undefined ? d : String(v));
+    return {
+      kanwil: teksAtau(r.kanwil, 'Kanwil'),
+      filter: teksAtau(r.filter),
+      waktu: teksAtau(r.waktu),
+      sumber: teksAtau(r.sumber, 'JSON'),
+      namaFile: teksAtau(r.namaFile),
+      kantah: r.kantah.filter((k) => k && k.nama).map((k) => ({
+        nama: String(k.nama).trim(), m: k.m && typeof k.m === 'object' ? k.m : {},
+        jmlLayanan: angka(k.jmlLayanan), berkasTerambil: angka(k.berkasTerambil), catatan: teksAtau(k.catatan),
+      })),
+      layanan: (Array.isArray(r.layanan) ? r.layanan : []).filter((l) => l && l.kantah && l.prosedur).map((l) => ({
+        kantah: String(l.kantah).trim(), prosedur: String(l.prosedur).trim(), m: l.m && typeof l.m === 'object' ? l.m : {},
+        berkasTerambil: angka(l.berkasTerambil), catatan: teksAtau(l.catatan),
+      })),
+      berkas: r.berkas.filter((b) => b && b.nomor !== undefined && b.nomor !== null).map((b) => ({
+        kantah: teksAtau(b.kantah).trim(), prosedur: teksAtau(b.prosedur).trim(), nomor: String(b.nomor).trim(),
+        tahun: b.tahun === undefined || b.tahun === null ? '' : b.tahun,
+        posisi: teksAtau(b.posisi).trim() || '(tanpa posisi)', status: teksAtau(b.status),
+        mulai: tanggal(b.mulai), durasi: b.durasi === '' || b.durasi === null || b.durasi === undefined ? '' : angka(b.durasi),
+        jatuhTempo: tanggal(b.jatuhTempo),
+      })),
+    };
+  }
+
+  // Mengembalikan satu rekap, atau daftar rekap bila file adalah cadangan Monitra.
   async function dariFile(file) {
     const buf = await file.arrayBuffer();
     if (/\.json$/i.test(file.name)) {
-      const j = JSON.parse(td.decode(buf));
-      return j && j.berkas && j.kantah && j.kanwil ? { ...j, namaFile: file.name } : { ...dariEkstensi(j), namaFile: file.name };
+      let j;
+      try { j = JSON.parse(td.decode(buf)); } catch (e) { throw new Error('File .json tidak bisa dibaca (format rusak).'); }
+      if (j && j.jenis === 'monitra-cadangan') {
+        if (!Array.isArray(j.rekap)) throw new Error('File cadangan tidak berisi daftar rekap.');
+        return j.rekap.map(periksa);
+      }
+      if (j && j.berkas && j.kantah && j.kanwil) return { ...periksa(j), namaFile: file.name };
+      if (!j || !Array.isArray(j.kantah)) throw new Error('File .json ini bukan hasil ekstensi Rekap Tunggakan Kanwil atau cadangan Monitra.');
+      return { ...dariEkstensi(j), namaFile: file.name };
     }
     return dariExcel(await bacaXlsx(buf), file.name);
   }
 
-  global.DataRekap = { bacaXlsx, dariExcel, dariEkstensi, dariFile, METRIK, angka };
+  // Data rekaan untuk mencoba Monitra sebelum memasang ekstensi.
+  function contoh() {
+    let seed = 7;
+    const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const pilih = (a) => a[Math.floor(r() * a.length)];
+    const kantahN = ['Kota Mataram', 'Lombok Barat', 'Lombok Tengah', 'Lombok Timur', 'Sumbawa', 'Dompu'];
+    const layN = ['Peralihan Hak - Jual Beli', 'Roya', 'Pengecekan Sertipikat', 'Hak Tanggungan', 'Pemecahan Bidang', 'Pengukuran dan Pemetaan Kadastral'];
+    const posN = ['Petugas Loket', 'Kasubsi Pendaftaran Hak', 'Kasi Penetapan Hak', 'Kepala Kantor', 'Petugas Ukur', 'Arsip'];
+    const kini = new Date();
+    const h = {
+      kanwil: { namakanwil: 'Kanwil Contoh (data rekaan)' },
+      filter: 'Semua Tahun / Semua Bulan',
+      waktu: kini.toISOString(),
+      kantah: kantahN.map((k) => {
+        const layanan = layN.filter(() => r() < 0.7).map((l) => {
+          const n = 3 + Math.floor(r() * 40);
+          return {
+            info: { namaprosedur: l, berkasmasuk: n * 7, prosessesuaiprosedur: n * 2, prosesmelebihiprosedur: n, selesaisesuaiprosedur: n * 4, selesaimelebihiprosedur: n },
+            detail: Array.from({ length: n }, () => {
+              const mulai = new Date(kini - Math.floor(r() * r() * 700 + 20) * 864e5);
+              const durasi = pilih([3, 5, 7, 14, 30]);
+              return {
+                nomorberkas: String(10000 + Math.floor(r() * 89999)), tahunberkas: mulai.getFullYear(), posisi_berkas_digital: pilih(posN),
+                statusberkas: 'Proses', tanggalmulai: '/Date(' + Number(mulai) + ')/', durasi, jatuhtempo: '/Date(' + (Number(mulai) + durasi * 864e5) + ')/',
+              };
+            }),
+          };
+        });
+        const t = layanan.reduce((a, l) => a + l.info.prosesmelebihiprosedur, 0);
+        return { info: { namakantah: 'Kantor Pertanahan ' + k, berkasmasuk: t * 7, prosessesuaiprosedur: t * 2, prosesmelebihiprosedur: t, selesaisesuaiprosedur: t * 4, selesaimelebihiprosedur: t }, layanan };
+      }),
+    };
+    return { ...dariEkstensi(h), sumber: 'Contoh' };
+  }
+
+  global.DataRekap = { bacaXlsx, dariExcel, dariEkstensi, dariFile, periksa, contoh, METRIK, angka };
 })(window);
