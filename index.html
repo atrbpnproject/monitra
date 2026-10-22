@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rekap Tunggakan SPOPP</title>
+  <meta name="description" content="Dashboard berkas proses melebihi SPOPP dari hasil ekstensi Rekap Tunggakan Kanwil. Data dibaca dan disimpan di browser Anda saja.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <strong>Rekap Tunggakan SPOPP</strong>
+      <span id="meta" class="muted"></span>
+    </div>
+    <div class="top-actions">
+      <select id="pilih-rekap" aria-label="Pilih rekap" hidden></select>
+      <label class="btn primary">
+        Impor Excel
+        <input id="file" type="file" accept=".xlsx,.json" multiple hidden>
+      </label>
+    </div>
+  </header>
+
+  <nav id="tabs" class="tabs" hidden>
+    <button data-tab="ringkasan">Ringkasan</button>
+    <button data-tab="kantah">Kantah</button>
+    <button data-tab="layanan">Layanan</button>
+    <button data-tab="posisi">Posisi Berkas</button>
+    <button data-tab="berkas">Daftar Berkas</button>
+    <button data-tab="riwayat">Riwayat &amp; Perbandingan</button>
+  </nav>
+
+  <main id="main"></main>
+
+  <div id="drop" class="drop-overlay" hidden><div>Lepaskan file Excel di sini</div></div>
+  <div id="tip" class="tip" hidden></div>
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="xlsx-writer.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
